@@ -9,23 +9,24 @@ import java.util.List;
 import javax.swing.JOptionPane;
 import javax.swing.table.DefaultTableModel;
 
-import BackEnd.NhanvienData;
-
-import java.awt.event.ActionListener;
-import java.awt.event.ActionEvent;
-
 
 /**
  *
  * @author Neo 16
  */
-public class Nhanvien extends javax.swing.JPanel {
+public class Nhanvien extends javax.swing.JPanel implements Refreshable {
 
-    /**
-     * Creates new form Nhanvien1
-     */
+    private final DAO.INhanVienDAO nhanVienDAO = new DAO.NhanVienDAOImpl();
+    private final DAO.IDanhMucDAO danhMucDAO = new DAO.DanhMucDAOImpl();
+
+    @Override
+    public void refresh() {
+        loadNhanvienTable();
+    }
+
     public Nhanvien() {
         initComponents();
+        styleUI();
         loadNhanvienTable();
         tblNhanvien.getSelectionModel().addListSelectionListener(e -> {
             int row = tblNhanvien.getSelectedRow();
@@ -45,83 +46,150 @@ public class Nhanvien extends javax.swing.JPanel {
             loadNhanvienTable();
             clearTextFields();
         });
+
         btnThem.addActionListener(e -> {
-            NhanvienData.themNhanVien(
-                txtManhanvien.getText(),
-                txtHoten.getText(),
-                boxGioitinh.getSelectedItem().toString(),
-                txtNgaysinh.getText(),
-                txtSDT.getText(),
-                txtDiachi.getText(),
-                txtEmail.getText(),
-                txtCongviec.getText()
-            );
-        });
-        btnXoa.addActionListener(new ActionListener() {
-            public void actionPerformed(ActionEvent evt) {
-                int selectedRow = tblNhanvien.getSelectedRow();
-                if (selectedRow == -1) {
-                    JOptionPane.showMessageDialog(null, "Vui lòng chọn nhân viên cần xóa!");
-                    return;
-                }
-        
-                String maNV = tblNhanvien.getValueAt(selectedRow, 0).toString();
-        
-                int confirm = JOptionPane.showConfirmDialog(null,
-                        "Bạn có chắc muốn xóa nhân viên mã " + maNV + " không?",
-                        "Xác nhận xóa", JOptionPane.YES_NO_OPTION);
-        
-                if (confirm == JOptionPane.YES_OPTION) {
-                    boolean result = NhanvienData.xoaNhanVien(maNV);
-                    if (result) {
-                        JOptionPane.showMessageDialog(null, "Xóa nhân viên thành công!");
-                    } else {
-                        JOptionPane.showMessageDialog(null, "Xóa nhân viên thất bại!");
-                    }
-                }
-            }
-        });
-        btnTimkiem.addActionListener(new ActionListener() {
-            public void actionPerformed(ActionEvent e) {
-                String maNV = txtManhanvien.getText().trim();
-        
-                if (maNV.isEmpty()) {
-                    JOptionPane.showMessageDialog(null, "Vui lòng nhập mã nhân viên cần tìm!");
-                    return;
-                }
-        
-                List<Object[]> ketQua = NhanvienData.timKiemNhanVienTheoMa(maNV);
-                DefaultTableModel model = (DefaultTableModel) tblNhanvien.getModel();
-                model.setRowCount(0); // Xóa bảng cũ
-        
-                if (ketQua.isEmpty()) {
-                    JOptionPane.showMessageDialog(null, "Không tìm thấy nhân viên với mã: " + maNV);
-                } else {
-                    for (Object[] row : ketQua) {
-                        model.addRow(row);
-                    }
-                }
-            }
-        });
-        
-        btnCapnhat.addActionListener(new ActionListener() {
-            public void actionPerformed(ActionEvent evt) {
+            try {
                 String maNV = txtManhanvien.getText().trim();
                 String hoTen = txtHoten.getText().trim();
                 String gioiTinh = boxGioitinh.getSelectedItem().toString();
-                String ngaySinh = txtNgaysinh.getText().trim();
+                String ngaySinhStr = txtNgaysinh.getText().trim();
                 String sdt = txtSDT.getText().trim();
                 String diaChi = txtDiachi.getText().trim();
                 String email = txtEmail.getText().trim();
-                String maCongViec = txtCongviec.getText().trim();
-        
-                boolean result = NhanvienData.capNhatNhanVien(maNV, hoTen, gioiTinh, ngaySinh, sdt, diaChi, email, maCongViec);
-                if (result) {
-                    JOptionPane.showMessageDialog(null, "Cập nhật nhân viên thành công!");
-                    // Load lại bảng nếu cần
-                } else {
-                    JOptionPane.showMessageDialog(null, "Cập nhật nhân viên thất bại!");
+                String congViecStr = txtCongviec.getText().trim();
+
+                if (maNV.isEmpty() || hoTen.isEmpty() || ngaySinhStr.isEmpty() || sdt.isEmpty() || diaChi.isEmpty() || email.isEmpty() || congViecStr.isEmpty()) {
+                    JOptionPane.showMessageDialog(this, "Vui lòng nhập đầy đủ thông tin!");
+                    return;
                 }
+
+                Model.NhanVien nv = new Model.NhanVien();
+                nv.setMaNhanVien(maNV);
+                nv.setHoTen(hoTen);
+                nv.setGioiTinh(gioiTinh);
+                nv.setNgaySinh(new java.text.SimpleDateFormat("yyyy-MM-dd").parse(ngaySinhStr));
+                nv.setSoDienThoai(sdt);
+                nv.setDiaChi(diaChi);
+                nv.setEmail(email);
+
+                int maCV;
+                try {
+                    maCV = Integer.parseInt(congViecStr);
+                } catch (NumberFormatException ex) {
+                    maCV = danhMucDAO.getAllCongViec().stream()
+                            .filter(cv -> cv.getTenCongViec().equalsIgnoreCase(congViecStr))
+                            .map(Model.CongViec::getMaCongViec)
+                            .findFirst().orElse(1);
+                }
+                nv.setCongViec(new Model.CongViec(maCV, congViecStr));
+
+                if (nhanVienDAO.save(nv)) {
+                    JOptionPane.showMessageDialog(this, "Thêm nhân viên thành công!");
+                    loadNhanvienTable();
+                    clearTextFields();
+                } else {
+                    JOptionPane.showMessageDialog(this, "Thêm nhân viên thất bại!");
+                }
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(this, "Lỗi: " + ex.getMessage());
+            }
+        });
+
+        btnXoa.addActionListener(e -> {
+            int selectedRow = tblNhanvien.getSelectedRow();
+            if (selectedRow == -1) {
+                JOptionPane.showMessageDialog(this, "Vui lòng chọn nhân viên cần xóa!");
+                return;
+            }
+
+            String maNV = tblNhanvien.getValueAt(selectedRow, 0).toString();
+
+            int confirm = JOptionPane.showConfirmDialog(this,
+                    "Bạn có chắc muốn xóa nhân viên mã " + maNV + " không?",
+                    "Xác nhận xóa", JOptionPane.YES_NO_OPTION);
+
+            if (confirm == JOptionPane.YES_OPTION) {
+                if (nhanVienDAO.deleteById(maNV)) {
+                    JOptionPane.showMessageDialog(this, "Xóa nhân viên thành công!");
+                    loadNhanvienTable();
+                    clearTextFields();
+                } else {
+                    JOptionPane.showMessageDialog(this, "Xóa nhân viên thất bại!");
+                }
+            }
+        });
+
+        btnTimkiem.addActionListener(e -> {
+            String maNV = txtManhanvien.getText().trim();
+            if (maNV.isEmpty()) {
+                JOptionPane.showMessageDialog(this, "Vui lòng nhập mã nhân viên cần tìm!");
+                return;
+            }
+
+            DefaultTableModel model = (DefaultTableModel) tblNhanvien.getModel();
+            model.setRowCount(0);
+            nhanVienDAO.findById(maNV).ifPresentOrElse(nv -> {
+                String tenCV = nv.getCongViec() != null ? nv.getCongViec().getTenCongViec() : "";
+                String ngaySinhStr = nv.getNgaySinh() != null ? new java.text.SimpleDateFormat("yyyy-MM-dd").format(nv.getNgaySinh()) : "";
+                model.addRow(new Object[]{
+                    nv.getMaNhanVien(),
+                    nv.getHoTen(),
+                    nv.getGioiTinh(),
+                    ngaySinhStr,
+                    nv.getSoDienThoai(),
+                    nv.getDiaChi(),
+                    nv.getEmail(),
+                    tenCV
+                });
+            }, () -> {
+                JOptionPane.showMessageDialog(this, "Không tìm thấy nhân viên với mã: " + maNV);
+            });
+        });
+        
+        btnCapnhat.addActionListener(e -> {
+            try {
+                String maNV = txtManhanvien.getText().trim();
+                String hoTen = txtHoten.getText().trim();
+                String gioiTinh = boxGioitinh.getSelectedItem().toString();
+                String ngaySinhStr = txtNgaysinh.getText().trim();
+                String sdt = txtSDT.getText().trim();
+                String diaChi = txtDiachi.getText().trim();
+                String email = txtEmail.getText().trim();
+                String congViecStr = txtCongviec.getText().trim();
+
+                if (maNV.isEmpty() || hoTen.isEmpty() || ngaySinhStr.isEmpty() || sdt.isEmpty() || diaChi.isEmpty() || email.isEmpty() || congViecStr.isEmpty()) {
+                    JOptionPane.showMessageDialog(this, "Vui lòng nhập đầy đủ thông tin!");
+                    return;
+                }
+
+                Model.NhanVien nv = new Model.NhanVien();
+                nv.setMaNhanVien(maNV);
+                nv.setHoTen(hoTen);
+                nv.setGioiTinh(gioiTinh);
+                nv.setNgaySinh(new java.text.SimpleDateFormat("yyyy-MM-dd").parse(ngaySinhStr));
+                nv.setSoDienThoai(sdt);
+                nv.setDiaChi(diaChi);
+                nv.setEmail(email);
+
+                int maCV;
+                try {
+                    maCV = Integer.parseInt(congViecStr);
+                } catch (NumberFormatException ex) {
+                    maCV = danhMucDAO.getAllCongViec().stream()
+                            .filter(cv -> cv.getTenCongViec().equalsIgnoreCase(congViecStr))
+                            .map(Model.CongViec::getMaCongViec)
+                            .findFirst().orElse(1);
+                }
+                nv.setCongViec(new Model.CongViec(maCV, congViecStr));
+
+                if (nhanVienDAO.update(nv)) {
+                    JOptionPane.showMessageDialog(this, "Cập nhật nhân viên thành công!");
+                    loadNhanvienTable();
+                } else {
+                    JOptionPane.showMessageDialog(this, "Cập nhật nhân viên thất bại!");
+                }
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(this, "Lỗi: " + ex.getMessage());
             }
         });        
     }
@@ -133,26 +201,40 @@ public class Nhanvien extends javax.swing.JPanel {
         txtSDT.setText("");
         txtDiachi.setText("");
         txtEmail.setText("");
-        txtCongviec.setText(""); // nếu dùng TextField
-        boxGioitinh.setSelectedIndex(0); // hoặc set lại về "Nam"
+        txtCongviec.setText("");
+        boxGioitinh.setSelectedIndex(0);
     } 
+
     private void loadNhanvienTable() {
         DefaultTableModel model = (DefaultTableModel) tblNhanvien.getModel();
-        model.setRowCount(0); // clear
-        List<NhanvienData.Nhanvien> list = NhanvienData.getAllNhanVien();
+        model.setRowCount(0);
+        List<Model.NhanVien> list = nhanVienDAO.findAll();
 
-        for (NhanvienData.Nhanvien nv : list) {
+        for (Model.NhanVien nv : list) {
+            String tenCV = nv.getCongViec() != null ? nv.getCongViec().getTenCongViec() : "";
+            String ngaySinhStr = nv.getNgaySinh() != null ? new java.text.SimpleDateFormat("yyyy-MM-dd").format(nv.getNgaySinh()) : "";
             model.addRow(new Object[]{
                 nv.getMaNhanVien(),
-                nv.getTenNhanVien(),
+                nv.getHoTen(),
                 nv.getGioiTinh(),
-                nv.getNgaySinh(),
+                ngaySinhStr,
                 nv.getSoDienThoai(),
                 nv.getDiaChi(),
                 nv.getEmail(),
-                nv.getTenCongViec()
+                tenCV
             });
         }
+        GUI.theme.UITheme.styleTable(tblNhanvien);
+    }
+
+    private void styleUI() {
+        GUI.theme.UITheme.styleContainer(this);
+        GUI.theme.UITheme.stylePrimaryButton(btnThem);
+        GUI.theme.UITheme.styleButton(btnCapnhat, GUI.theme.UITheme.WARNING, new java.awt.Color(217, 119, 6), java.awt.Color.WHITE);
+        GUI.theme.UITheme.styleDangerButton(btnXoa);
+        GUI.theme.UITheme.stylePrimaryButton(btnTimkiem);
+        GUI.theme.UITheme.styleSecondaryButton(btnLammoi);
+        GUI.theme.UITheme.styleTable(tblNhanvien);
     }
 
     /**
@@ -160,7 +242,6 @@ public class Nhanvien extends javax.swing.JPanel {
      * WARNING: Do NOT modify this code. The content of this method is always
      * regenerated by the Form Editor.
      */
-    @SuppressWarnings("unchecked")
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
 

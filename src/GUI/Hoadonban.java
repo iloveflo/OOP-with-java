@@ -6,34 +6,38 @@ package GUI;
 
 import javax.swing.JOptionPane;
 import javax.swing.table.DefaultTableModel;
-import BackEnd.*;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
 
 /**
  *
  * @author Neo 16
  */
-public class Hoadonban extends javax.swing.JPanel {
+public class Hoadonban extends javax.swing.JPanel implements Refreshable {
+
+    private final Service.IReportService reportService = new Service.impl.ReportServiceImpl();
+
+    @Override
+    public void refresh() {
+        loadHoaDonBanToTable();
+    }
 
     /**
      * Creates new form Hoadonban1
      */
     public Hoadonban() {
         initComponents();
+        styleUI();
         loadHoaDonBanToTable();
         btnXuathoadon.addActionListener(e -> {
             String soHoaDon = txtSohoadonban.getText().trim();
-            HoaDonBanService.xuatHoaDon(soHoaDon);
+            reportService.exportHoaDonBan(soHoaDon);
         });
 
         btnTimkiem.addActionListener(e -> {
             String maKH = txtMakhachhang.getText().trim();
             if (!maKH.isEmpty()) {
                 DefaultTableModel model = (DefaultTableModel) tblHoadonban.getModel();
-                HoaDonBanService.timKiemHoaDonTheoMaKhachHang(model, maKH);
+                reportService.searchHoaDonBanByMaKhachHang(model, maKH);
+                GUI.theme.UITheme.styleTable(tblHoadonban);
             } else {
                 JOptionPane.showMessageDialog(null, "Vui lòng nhập mã khách hàng để tìm kiếm.");
             }
@@ -61,74 +65,53 @@ public class Hoadonban extends javax.swing.JPanel {
                     txtTenquanao.setText(tenQuanAo); // Đổ tên quần áo vào TextField
                 }
             }
-        });     
+        });
     }
 
+    private final DAO.IHoaDonBanDAO hoaDonBanDAO = new DAO.HoaDonBanDAOImpl();
+    private final Service.IProductService productService = new Service.impl.ProductServiceImpl();
+
     public String getTenQuanAoFromMaQuanAo(String maQuanAo) {
-        String tenQuanAo = "";
-        Connection connection = null;
-        PreparedStatement statement = null;
-        ResultSet resultSet = null;
-
         try {
-            // Mở kết nối
-            connection = ketnoiCSDL.getConnection();
-
-            // Câu lệnh SQL để lấy tên quần áo từ MaQuanAo
-            String query = "SELECT TenQuanAo FROM SanPham WHERE MaQuanAo = ?";
-            statement = connection.prepareStatement(query);
-            statement.setString(1, maQuanAo);
-
-            // Thực thi truy vấn
-            resultSet = statement.executeQuery();
-
-            // Nếu có kết quả, lấy tên quần áo
-            if (resultSet.next()) {
-                tenQuanAo = resultSet.getString("TenQuanAo");
-            }
-        } catch (SQLException e) {
-            e.printStackTrace(); // Xử lý lỗi nếu có
-        } finally {
-            // Đóng kết nối và các đối tượng liên quan
-            try {
-                if (resultSet != null) resultSet.close();
-                if (statement != null) statement.close();
-                if (connection != null) connection.close();
-            } catch (SQLException e) {
-                e.printStackTrace();
-            }
+            return productService.getProductById(Integer.parseInt(maQuanAo))
+                    .map(Model.SanPham::getTenQuanAo)
+                    .orElse("Không tìm thấy");
+        } catch (Exception e) {
+            return "Không tìm thấy";
         }
-        return tenQuanAo;
     }
 
     public void loadHoaDonBanToTable() {
         DefaultTableModel model = (DefaultTableModel) tblHoadonban.getModel();
-        model.setRowCount(0); // xóa dữ liệu cũ
+        model.setRowCount(0);
 
-        String sql = "SELECT hdb.SoHoaDonBan, ct.MaQuanAo, hdb.MaKhachHang, hdb.MaNhanVien, ct.SoLuong, hdb.NgayBan, ct.ThanhTien " +
-                    "FROM hoadonban hdb " +
-                    "JOIN chitiethoadonban ct ON hdb.SoHoaDonBan = ct.SoHoaDonBan";
-
-        try (Connection conn = ketnoiCSDL.getConnection();
-            PreparedStatement pst = conn.prepareStatement(sql);
-            ResultSet rs = pst.executeQuery()) {
-
-            while (rs.next()) {
-                Object[] row = {
-                    rs.getInt("SoHoaDonBan"),
-                    rs.getInt("MaQuanAo"),
-                    rs.getString("MaKhachHang"),
-                    rs.getInt("MaNhanVien"),
-                    rs.getInt("SoLuong"),
-                    rs.getDate("NgayBan"),
-                    rs.getDouble("ThanhTien")
-                };
-                model.addRow(row);
+        try {
+            java.util.List<Model.HoaDonBan> list = hoaDonBanDAO.findAll();
+            for (Model.HoaDonBan hdb : list) {
+                for (Model.ChiTietHoaDon ct : hdb.getDanhSachChiTiet()) {
+                    Object[] row = {
+                        hdb.getSoHoaDon(),
+                        ct.getSanPham() != null ? ct.getSanPham().getMaQuanAo() : "",
+                        hdb.getKhachHang() != null ? hdb.getKhachHang().getMaKhachHang() : "",
+                        hdb.getNhanVien() != null ? hdb.getNhanVien().getMaNhanVien() : "",
+                        ct.getSoLuong(),
+                        hdb.getNgayLap(),
+                        ct.getThanhTien()
+                    };
+                    model.addRow(row);
+                }
             }
-
-        } catch (SQLException e) {
+            GUI.theme.UITheme.styleTable(tblHoadonban);
+        } catch (Exception e) {
             JOptionPane.showMessageDialog(null, "Lỗi khi tải dữ liệu hóa đơn: " + e.getMessage());
         }
+    }
+
+    private void styleUI() {
+        GUI.theme.UITheme.styleContainer(this);
+        GUI.theme.UITheme.styleSuccessButton(btnXuathoadon);
+        GUI.theme.UITheme.stylePrimaryButton(btnTimkiem);
+        GUI.theme.UITheme.styleTable(tblHoadonban);
     }
 
     /**
@@ -136,7 +119,6 @@ public class Hoadonban extends javax.swing.JPanel {
      * WARNING: Do NOT modify this code. The content of this method is always
      * regenerated by the Form Editor.
      */
-    @SuppressWarnings("unchecked")
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
 
@@ -301,7 +283,6 @@ public class Hoadonban extends javax.swing.JPanel {
     }// </editor-fold>//GEN-END:initComponents
 
     private void btnXuathoadonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnXuathoadonActionPerformed
-        // TODO add your handling code here:
     }//GEN-LAST:event_btnXuathoadonActionPerformed
 
 

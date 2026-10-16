@@ -4,10 +4,6 @@
  */
 package GUI;
 
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import BackEnd.*;
 import javax.swing.JOptionPane;
 import javax.swing.table.DefaultTableModel;
 
@@ -15,13 +11,23 @@ import javax.swing.table.DefaultTableModel;
  *
  * @author Neo 16
  */
-public class HoadonnhapNV extends javax.swing.JPanel {
+public class HoadonnhapNV extends javax.swing.JPanel implements Refreshable {
 
     /**
      * Creates new form Hoadonnhap1
      */
+    private final Service.IImportService importService = new Service.impl.ImportServiceImpl();
+    private final DAO.IDanhMucDAO danhMucDAO = new DAO.DanhMucDAOImpl();
+    private final Service.IReportService reportService = new Service.impl.ReportServiceImpl();
+
+    @Override
+    public void refresh() {
+        loadHoaDonNhapData();
+    }
+
     public HoadonnhapNV() {
         initComponents();
+        styleUI();
         loadNhaCungCap();
         loadHoaDonNhapData();
 
@@ -58,10 +64,31 @@ public class HoadonnhapNV extends javax.swing.JPanel {
         btnTimkiem.addActionListener(e -> {
             String soHD = txtSohoadonnhap.getText().trim();
             if (!soHD.isEmpty()) {
-                DefaultTableModel model = HoaDonNhapService.timKiemHoaDonNhap(soHD);
-                tblHoadonnhap.setModel(model);
+                try {
+                    int id = Integer.parseInt(soHD);
+                    DefaultTableModel model = (DefaultTableModel) tblHoadonnhap.getModel();
+                    model.setRowCount(0);
+                    importService.getHoaDonNhapById(id).ifPresent(hd -> {
+                        String tenNCC = hd.getNhaCungCap() != null ? hd.getNhaCungCap().getTenNCC() : "";
+                        String maNV = hd.getNhanVien() != null ? hd.getNhanVien().getMaNhanVien() : "";
+                        for (Model.ChiTietHoaDon ct : hd.getDanhSachChiTiet()) {
+                            model.addRow(new Object[] {
+                                hd.getSoHoaDon(),
+                                maNV,
+                                tenNCC,
+                                ct.getSanPham() != null ? ct.getSanPham().getMaQuanAo() : "",
+                                ct.getSoLuong(),
+                                ct.getDonGia(),
+                                ct.getGiamGia(),
+                                ct.getThanhTien()
+                            });
+                        }
+                    });
+                } catch (NumberFormatException ex) {
+                    JOptionPane.showMessageDialog(this, "Số hóa đơn phải là số nguyên!");
+                }
             } else {
-                JOptionPane.showMessageDialog(null, "Vui lòng nhập số hóa đơn nhập cần tìm.");
+                loadHoaDonNhapData();
             }
         });
 
@@ -73,73 +100,77 @@ public class HoadonnhapNV extends javax.swing.JPanel {
             }
 
             String soHoaDonNhap = tblHoadonnhap.getValueAt(selectedRow, 0).toString();
-            HoaDonNhapService.xuat(soHoaDonNhap);
+            reportService.exportHoaDonNhap(soHoaDonNhap);
         });
 
         btnThemhoadon.addActionListener(e -> {
-            HoaDonNhapService.lapHoaDonNhap(
-                txtMaquanao.getText(),
-                txtDongia.getText(),
-                txtGiamgia.getText(),
-                txtSoluongnhap.getText(),
-                txtManhanvien.getText(),
-                boxNhacungcap.getSelectedItem().toString()
-            );
+            try {
+                String maQuanAoStr = txtMaquanao.getText().trim();
+                String donGiaStr = txtDongia.getText().trim();
+                String giamGiaStr = txtGiamgia.getText().trim();
+                String soLuongStr = txtSoluongnhap.getText().trim();
+                String maNV = txtManhanvien.getText().trim();
+                String tenNCC = (String) boxNhacungcap.getSelectedItem();
+
+                if (maQuanAoStr.isEmpty() || donGiaStr.isEmpty() || soLuongStr.isEmpty() || maNV.isEmpty() || tenNCC == null) {
+                    JOptionPane.showMessageDialog(this, "Vui lòng nhập đầy đủ thông tin!");
+                    return;
+                }
+
+                int maQuanAo = Integer.parseInt(maQuanAoStr);
+                int soLuong = Integer.parseInt(soLuongStr);
+                java.math.BigDecimal donGia = new java.math.BigDecimal(donGiaStr);
+                double giamGia = giamGiaStr.isEmpty() ? 0.0 : Double.parseDouble(giamGiaStr);
+
+                int maNCC = danhMucDAO.getAllNhaCungCap().stream()
+                        .filter(ncc -> ncc.getTenNCC().equalsIgnoreCase(tenNCC))
+                        .map(Model.NhaCungCap::getMaNCC)
+                        .findFirst()
+                        .orElse(1);
+
+                importService.lapHoaDonNhap(maNV, maNCC, maQuanAo, soLuong, donGia, giamGia);
+                JOptionPane.showMessageDialog(this, "Lập hóa đơn nhập thành công!");
+                loadHoaDonNhapData();
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(this, "Lỗi: " + ex.getMessage());
+            }
         });
     }
 
     private void loadNhaCungCap() {
-        try (Connection conn = ketnoiCSDL.getConnection()) {
-            String query = "SELECT MaNCC, TenNCC FROM NhaCungCap";
-            PreparedStatement stmt = conn.prepareStatement(query);
-            ResultSet rs = stmt.executeQuery();
-
-            boxNhacungcap.removeAllItems(); // Xóa các mục cũ nếu có
-
-            while (rs.next()) {
-                String tenNCC = rs.getString("TenNCC");
-                boxNhacungcap.addItem(tenNCC);
-            }
-
-        } catch (Exception e) {
-            JOptionPane.showMessageDialog(null, "Lỗi tải nhà cung cấp: " + e.getMessage());
-        }
+        boxNhacungcap.removeAllItems();
+        danhMucDAO.getAllNhaCungCap().forEach(ncc -> boxNhacungcap.addItem(ncc.getTenNCC()));
     }
     
     private void loadHoaDonNhapData() {
         DefaultTableModel model = (DefaultTableModel) tblHoadonnhap.getModel();
-        model.setRowCount(0); // Xóa dữ liệu cũ
-
-        String query = """
-            SELECT hd.SoHoaDonNhap, hd.MaNhanVien, ncc.TenNCC, ct.MaQuanAo, 
-                ct.SoLuong, ct.DonGia, ct.GiamGia, 
-                ct.SoLuong * ct.DonGia * (1 - ct.GiamGia / 100) AS ThanhTien
-            FROM HoaDonNhap hd
-            JOIN NhaCungCap ncc ON hd.MaNCC = ncc.MaNCC
-            JOIN ChiTietHoaDonNhap ct ON hd.SoHoaDonNhap = ct.SoHoaDonNhap
-        """;
-
-        try (Connection conn = ketnoiCSDL.getConnection();
-            PreparedStatement stmt = conn.prepareStatement(query);
-            ResultSet rs = stmt.executeQuery()) {
-
-            while (rs.next()) {
-                Object[] row = {
-                    rs.getString("SoHoaDonNhap"),
-                    rs.getString("MaNhanVien"),
-                    rs.getString("TenNCC"),
-                    rs.getString("MaQuanAo"),
-                    rs.getInt("SoLuong"),
-                    rs.getDouble("DonGia"),
-                    rs.getFloat("GiamGia"),
-                    rs.getDouble("ThanhTien")
-                };
-                model.addRow(row);
+        model.setRowCount(0);
+        java.util.List<Model.HoaDonNhap> list = importService.getAllHoaDonNhap();
+        for (Model.HoaDonNhap hd : list) {
+            String tenNCC = hd.getNhaCungCap() != null ? hd.getNhaCungCap().getTenNCC() : "";
+            String maNV = hd.getNhanVien() != null ? hd.getNhanVien().getMaNhanVien() : "";
+            for (Model.ChiTietHoaDon ct : hd.getDanhSachChiTiet()) {
+                model.addRow(new Object[] {
+                    hd.getSoHoaDon(),
+                    maNV,
+                    tenNCC,
+                    ct.getSanPham() != null ? ct.getSanPham().getMaQuanAo() : "",
+                    ct.getSoLuong(),
+                    ct.getDonGia(),
+                    ct.getGiamGia(),
+                    ct.getThanhTien()
+                });
             }
-
-        } catch (Exception e) {
-            JOptionPane.showMessageDialog(null, "Lỗi tải dữ liệu hóa đơn nhập: " + e.getMessage());
         }
+        GUI.theme.UITheme.styleTable(tblHoadonnhap);
+    }
+
+    private void styleUI() {
+        GUI.theme.UITheme.styleContainer(this);
+        GUI.theme.UITheme.styleSuccessButton(btnXuathoadon);
+        GUI.theme.UITheme.stylePrimaryButton(btnThemhoadon);
+        GUI.theme.UITheme.stylePrimaryButton(btnTimkiem);
+        GUI.theme.UITheme.styleTable(tblHoadonnhap);
     }
 
     /**
@@ -147,7 +178,6 @@ public class HoadonnhapNV extends javax.swing.JPanel {
      * WARNING: Do NOT modify this code. The content of this method is always
      * regenerated by the Form Editor.
      */
-    @SuppressWarnings("unchecked")
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
 
@@ -342,11 +372,9 @@ public class HoadonnhapNV extends javax.swing.JPanel {
     }// </editor-fold>//GEN-END:initComponents
 
     private void btnXuathoadonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnXuathoadonActionPerformed
-        // TODO add your handling code here:
     }//GEN-LAST:event_btnXuathoadonActionPerformed
 
     private void btnThemhoadonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnThemhoadonActionPerformed
-        // TODO add your handling code here:
     }//GEN-LAST:event_btnThemhoadonActionPerformed
 
 

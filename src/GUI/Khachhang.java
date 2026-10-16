@@ -8,21 +8,27 @@ import java.util.List;
 
 import javax.swing.JOptionPane;
 import javax.swing.table.DefaultTableModel;
-import BackEnd.*;
 
 /**
  *
  * @author Neo 16
  */
-public class Khachhang extends javax.swing.JPanel {
+public class Khachhang extends javax.swing.JPanel implements Refreshable {
 
-    /**
-     * Creates new form Khachhang11
-     */
+    private final DAO.IKhachHangDAO khachHangDAO = new DAO.KhachHangDAOImpl();
+    private final DAO.ITaiKhoanDAO taiKhoanDAO = new DAO.TaiKhoanDAOImpl();
+
+    @Override
+    public void refresh() {
+        loadKhachHangTable();
+    }
+
     public Khachhang() {
         initComponents();
+        styleUI();
         loadKhachHangTable();
         handleRowClick();
+
         btnXoa.addActionListener(e -> {
             String maKH = txtMakhachhang.getText().trim();
             if (maKH.isEmpty()) {
@@ -32,32 +38,43 @@ public class Khachhang extends javax.swing.JPanel {
 
             int confirm = JOptionPane.showConfirmDialog(this, "Bạn có chắc muốn xóa khách hàng và tài khoản này?", "Xác nhận", JOptionPane.YES_NO_OPTION);
             if (confirm == JOptionPane.YES_OPTION) {
-                if (KhachhangData.deleteKhachHangAndTaiKhoan(maKH)) {
-                    JOptionPane.showMessageDialog(this, "Xóa thành công.");
-                    loadKhachHangTable();
-                    clearTextFields();
+                java.util.Optional<Model.KhachHang> opt = khachHangDAO.findById(maKH);
+                if (opt.isPresent()) {
+                    String maTK = opt.get().getMaTaiKhoan();
+                    boolean deleted = khachHangDAO.deleteById(maKH);
+                    if (deleted && maTK != null && !maTK.isEmpty()) {
+                        taiKhoanDAO.deleteById(maTK);
+                    }
+                    if (deleted) {
+                        JOptionPane.showMessageDialog(this, "Xóa thành công.");
+                        loadKhachHangTable();
+                        clearTextFields();
+                    } else {
+                        JOptionPane.showMessageDialog(this, "Xóa thất bại.");
+                    }
                 } else {
-                    JOptionPane.showMessageDialog(this, "Xóa thất bại.");
+                    JOptionPane.showMessageDialog(this, "Không tìm thấy khách hàng để xóa.");
                 }
             }
         });
+
         btnTimkiem.addActionListener(e -> {
             String maKH = txtMakhachhang.getText().trim();
             if (maKH.isEmpty()) {
                 JOptionPane.showMessageDialog(this, "Nhập mã khách hàng để tìm.");
                 return;
             }
-        
-            KhachhangData.Khachhang kh = KhachhangData.getKhachHangByID(maKH);
-            if (kh != null) {
-                txtTenkhachhang.setText(kh.getTenKhach());
+
+            khachHangDAO.findById(maKH).ifPresentOrElse(kh -> {
+                txtTenkhachhang.setText(kh.getHoTen());
                 txtDiachi.setText(kh.getDiaChi());
                 txtSDT.setText(kh.getSoDienThoai());
                 txtEmail.setText(kh.getEmail());
-            } else {
+            }, () -> {
                 JOptionPane.showMessageDialog(this, "Không tìm thấy khách hàng.");
-            }
+            });
         });
+
         btnLammoi.addActionListener(e -> {
             loadKhachHangTable();
             clearTextFields();
@@ -75,8 +92,14 @@ public class Khachhang extends javax.swing.JPanel {
                 return;
             }
         
-            KhachhangData.Khachhang kh = new KhachhangData.Khachhang(maKH, ten, diachi, sdt, email);
-            if (KhachhangData.updateKhachHang(kh)) {
+            Model.KhachHang kh = new Model.KhachHang();
+            kh.setMaKhachHang(maKH);
+            kh.setHoTen(ten);
+            kh.setDiaChi(diachi);
+            kh.setSoDienThoai(sdt);
+            kh.setEmail(email);
+
+            if (khachHangDAO.update(kh)) {
                 JOptionPane.showMessageDialog(this, "Cập nhật thành công.");
                 loadKhachHangTable();
             } else {
@@ -92,21 +115,31 @@ public class Khachhang extends javax.swing.JPanel {
         txtSDT.setText("");
         txtEmail.setText("");
     }    
+
     private void loadKhachHangTable() {
         DefaultTableModel model = (DefaultTableModel) tblKhachhang.getModel();
-        model.setRowCount(0); // Xóa dữ liệu cũ
+        model.setRowCount(0);
 
-                List<KhachhangData.Khachhang> list = KhachhangData.getAllKhachHang();
-            for (KhachhangData.Khachhang kh : list) {
-                model.addRow(new Object[]{
-                    kh.getMaKhachHang(),
-                    kh.getTenKhach(),
-                    kh.getDiaChi(),
-                    kh.getSoDienThoai(),
-                    kh.getEmail()
-                });
-            }
+        List<Model.KhachHang> list = khachHangDAO.findAll();
+        for (Model.KhachHang kh : list) {
+            model.addRow(new Object[]{
+                kh.getMaKhachHang(),
+                kh.getHoTen(),
+                kh.getDiaChi(),
+                kh.getSoDienThoai(),
+                kh.getEmail()
+            });
+        }
+        GUI.theme.UITheme.styleTable(tblKhachhang);
+    }
 
+    private void styleUI() {
+        GUI.theme.UITheme.styleContainer(this);
+        GUI.theme.UITheme.styleButton(btnCapnhat, GUI.theme.UITheme.WARNING, new java.awt.Color(217, 119, 6), java.awt.Color.WHITE);
+        GUI.theme.UITheme.styleDangerButton(btnXoa);
+        GUI.theme.UITheme.stylePrimaryButton(btnTimkiem);
+        GUI.theme.UITheme.styleSecondaryButton(btnLammoi);
+        GUI.theme.UITheme.styleTable(tblKhachhang);
     }
     private void handleRowClick() {
         tblKhachhang.addMouseListener(new java.awt.event.MouseAdapter() {
@@ -130,7 +163,6 @@ public class Khachhang extends javax.swing.JPanel {
      * WARNING: Do NOT modify this code. The content of this method is always
      * regenerated by the Form Editor.
      */
-    @SuppressWarnings("unchecked")
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
 

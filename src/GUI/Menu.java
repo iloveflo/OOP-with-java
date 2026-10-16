@@ -6,12 +6,7 @@ package GUI;
 
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
 import javax.swing.JFrame;
-import javax.swing.JPanel;
-import java.awt.BorderLayout;
-import BackEnd.*;
 
 /**
  *
@@ -22,9 +17,11 @@ public class Menu extends javax.swing.JFrame {
     /**
      * Creates new form Menu
      */
+    private final Service.IAuthService authService = new Service.impl.AuthServiceImpl();
+
     public Menu() {
         initComponents();
-        panelHienthi.setLayout(new BorderLayout());
+        styleUI();
         setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE); // Ngăn đóng mặc định
         addWindowListener(new WindowAdapter() {
             @Override
@@ -33,46 +30,90 @@ public class Menu extends javax.swing.JFrame {
             }
         });
 
+        panelHienthi.setLayout(cardLayout);
+
         btnDangxuat.addActionListener(e -> {
             capNhatDangNhap();
-            SessionManager.clearSession();
-            new Start().setVisible(true);
-            dispose();
+            GUI.util.AppNavigator.switchWindow(this, new Start());
         });
 
-        btnKhachhang.addActionListener(e -> showPanel(new Khachhang()));
-        btnNhanvien.addActionListener(e -> showPanel(new Nhanvien()));
-        btnSanpham.addActionListener(e -> showPanel(new Sanpham()));
-        btnHoadonmuaban.addActionListener(e -> showPanel(new Hoadonban()));
-        btnHoadonnhap.addActionListener(e -> showPanel(new Hoadonnhap()));
-        btnDoanhthu.addActionListener(e -> showPanel(new Thongke()));
-        btnMathangbanchay.addActionListener(e -> showPanel(new Mathangbanchay()));
-        btnMathangsaphet.addActionListener(e -> showPanel(new Mathangsaphet()));
+        btnKhachhang.addActionListener(e -> navigateTo("KHACH_HANG", btnKhachhang, Khachhang::new));
+        btnNhanvien.addActionListener(e -> navigateTo("NHAN_VIEN", btnNhanvien, Nhanvien::new));
+        btnSanpham.addActionListener(e -> navigateTo("SAN_PHAM", btnSanpham, Sanpham::new));
+        btnHoadonmuaban.addActionListener(e -> navigateTo("HOA_DON_BAN", btnHoadonmuaban, Hoadonban::new));
+        btnHoadonnhap.addActionListener(e -> navigateTo("HOA_DON_NHAP", btnHoadonnhap, Hoadonnhap::new));
+        btnDoanhthu.addActionListener(e -> navigateTo("DOANH_THU", btnDoanhthu, Thongke::new));
+        btnMathangbanchay.addActionListener(e -> navigateTo("HANG_BAN_CHAY", btnMathangbanchay, Mathangbanchay::new));
+        btnMathangsaphet.addActionListener(e -> navigateTo("HANG_SAP_HET", btnMathangsaphet, Mathangsaphet::new));
 
+        // Mặc định mở màn hình Sản phẩm
+        navigateTo("SAN_PHAM", btnSanpham, Sanpham::new);
+    }
+
+    private final java.awt.CardLayout cardLayout = new java.awt.CardLayout();
+    private final java.util.Map<String, javax.swing.JPanel> panelCache = new java.util.HashMap<>();
+
+    private void navigateTo(String name, javax.swing.JButton activeBtn, java.util.function.Supplier<javax.swing.JPanel> supplier) {
+        GUI.theme.UITheme.setActiveSidebarButton(activeBtn,
+            btnKhachhang, btnNhanvien, btnSanpham, btnDoanhthu,
+            btnHoadonmuaban, btnHoadonnhap, btnMathangbanchay, btnMathangsaphet);
+
+        javax.swing.JPanel p = panelCache.get(name);
+        if (p == null) {
+            p = supplier.get();
+            p.setBackground(GUI.theme.UITheme.BG_MAIN);
+            panelCache.put(name, p);
+            panelHienthi.add(p, name);
+        } else if (p instanceof Refreshable) {
+            ((Refreshable) p).refresh();
+        }
+        cardLayout.show(panelHienthi, name);
+        panelHienthi.revalidate();
+        panelHienthi.repaint();
+    }
+
+    private void styleUI() {
+        sidePanel.setBackground(GUI.theme.UITheme.SIDEBAR_BG);
+        mainPanel.setBackground(GUI.theme.UITheme.BG_MAIN);
+        panelHienthi.setBackground(GUI.theme.UITheme.BG_MAIN);
+        profilePic.setBackground(GUI.theme.UITheme.SIDEBAR_HOVER);
+
+        txtName.setForeground(java.awt.Color.WHITE);
+        txtName.setFont(GUI.theme.UITheme.FONT_SUBTITLE);
+        txtChucvu.setForeground(GUI.theme.UITheme.SIDEBAR_MUTED);
+        txtChucvu.setFont(GUI.theme.UITheme.FONT_SMALL);
+
+        jLabel4.setForeground(GUI.theme.UITheme.TEXT_PRIMARY);
+        jLabel4.setFont(GUI.theme.UITheme.FONT_TITLE);
+        jLabel5.setForeground(GUI.theme.UITheme.TEXT_SECONDARY);
+        jLabel5.setFont(GUI.theme.UITheme.FONT_SUBTITLE);
+
+        GUI.theme.UITheme.styleSidebarButton(btnKhachhang);
+        GUI.theme.UITheme.styleSidebarButton(btnSanpham);
+        GUI.theme.UITheme.styleSidebarButton(btnNhanvien);
+        GUI.theme.UITheme.styleSidebarButton(btnHoadonmuaban);
+        GUI.theme.UITheme.styleSidebarButton(btnHoadonnhap);
+        GUI.theme.UITheme.styleSidebarButton(btnDoanhthu);
+        GUI.theme.UITheme.styleSidebarButton(btnMathangbanchay);
+        GUI.theme.UITheme.styleSidebarButton(btnMathangsaphet);
+
+        GUI.theme.UITheme.styleDangerButton(btnDangxuat);
+
+        Model.TaiKhoan curTk = Service.UserSession.getInstance().getCurrentAccount();
+        if (curTk != null) {
+            txtName.setText(curTk.getTenDangNhap());
+            txtChucvu.setText(curTk.getLoaiTaiKhoan().getValue());
+        }
     }
 
     private void capNhatDangNhap() {
-        try (Connection conn = ketnoiCSDL.getConnection()) {
-            String sql = "UPDATE taikhoan SET DangNhap = 0 WHERE MaTaiKhoan = ?";
-            PreparedStatement stmt = conn.prepareStatement(sql);
-            stmt.setString(1, SessionManager.getMaTaiKhoan());
-            stmt.executeUpdate();
-        } catch (Exception ex) {
-            ex.printStackTrace();
-        }
+        String maTK = Service.UserSession.getInstance().getMaTaiKhoan();
+        authService.logout(maTK);
     }
 
     private void capNhatDangNhapVaThoat() {
         capNhatDangNhap();
-        SessionManager.clearSession();
         System.exit(0);
-    }
-
-     private void showPanel(JPanel panel) {
-        panelHienthi.removeAll();         // Xoá panel cũ
-        panelHienthi.add(panel, BorderLayout.CENTER); // Thêm panel mới
-        panelHienthi.revalidate();        // Cập nhật layout
-        panelHienthi.repaint();           // Vẽ lại
     }
 
     /**
@@ -80,7 +121,6 @@ public class Menu extends javax.swing.JFrame {
      * WARNING: Do NOT modify this code. The content of this method is always
      * regenerated by the Form Editor.
      */
-    @SuppressWarnings("unchecked")
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
 

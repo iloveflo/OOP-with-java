@@ -4,9 +4,6 @@
  */
 package GUI;
 
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
 import java.io.File;
 import java.awt.BorderLayout;
 import javax.swing.ImageIcon;
@@ -15,21 +12,27 @@ import javax.swing.JOptionPane;
 import javax.swing.table.DefaultTableModel;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-import java.util.Vector;
-import BackEnd.*;
 import java.awt.Image;
 
 /**
  *
  * @author Neo 16
  */
-public class Mathangbanchay extends javax.swing.JPanel {
+public class Mathangbanchay extends javax.swing.JPanel implements Refreshable {
+
+    private final Service.IProductService productService = new Service.impl.ProductServiceImpl();
+
+    @Override
+    public void refresh() {
+        loadTopSellingProducts();
+    }
 
     /**
      * Creates new form Mathangbanchay1
      */
     public Mathangbanchay() {
         initComponents();
+        styleUI();
         loadTopSellingProducts();
 
          tblMathangbanchay.addMouseListener(new MouseAdapter() {
@@ -37,19 +40,16 @@ public class Mathangbanchay extends javax.swing.JPanel {
             public void mouseClicked(MouseEvent e) {
                 int selectedRow = tblMathangbanchay.getSelectedRow();
                 if (selectedRow >= 0) {
-                    // Lấy dữ liệu từ bảng
                     String maQuanAo = tblMathangbanchay.getValueAt(selectedRow, 0).toString();
                     String tenQuanAo = tblMathangbanchay.getValueAt(selectedRow, 1).toString();
                     String tongBan = tblMathangbanchay.getValueAt(selectedRow, 2).toString();
                     String duongDanAnh = tblMathangbanchay.getValueAt(selectedRow, 3).toString();
 
-                    // Đưa dữ liệu lên các textbox
                     txtMaquanao.setText(maQuanAo);
                     txtTenquanao.setText(tenQuanAo);
                     txtSoluong.setText(tongBan);
                     txtAnh.setText(duongDanAnh);
 
-                    // Hiển thị ảnh lên JPanel
                     hienThiAnh(duongDanAnh);
                 }
             }
@@ -58,27 +58,18 @@ public class Mathangbanchay extends javax.swing.JPanel {
 
     public void hienThiAnh(String duongDan) {
         try {
-            // Đảm bảo đường dẫn hợp lệ (kiểm tra xem tệp có tồn tại không)
             File file = new File(duongDan);
             if (!file.exists()) {
                 JOptionPane.showMessageDialog(null, "Ảnh không tồn tại tại: " + duongDan);
                 return;
             }
     
-            // Tạo đối tượng ImageIcon từ đường dẫn ảnh
             ImageIcon icon = new ImageIcon(duongDan);
-            // Tải ảnh và thay đổi kích thước phù hợp với JPanel (Anh)
             Image img = icon.getImage().getScaledInstance(Anh.getWidth(), Anh.getHeight(), Image.SCALE_SMOOTH);
-    
-            // Tạo một JLabel chứa ảnh đã thay đổi kích thước
             JLabel lbl = new JLabel(new ImageIcon(img));
-    
-            // Xóa hết nội dung cũ của JPanel trước khi thêm ảnh mới
             Anh.removeAll();
-            Anh.setLayout(new BorderLayout()); // Đảm bảo layout hợp lý
-            Anh.add(lbl, BorderLayout.CENTER); // Thêm JLabel vào giữa JPanel
-    
-            // Cập nhật lại giao diện
+            Anh.setLayout(new BorderLayout());
+            Anh.add(lbl, BorderLayout.CENTER);
             Anh.revalidate();
             Anh.repaint();
         } catch (Exception e) {
@@ -88,39 +79,33 @@ public class Mathangbanchay extends javax.swing.JPanel {
     }
 
     public void loadTopSellingProducts() {
-        String query = """
-            SELECT sp.MaQuanAo, sp.TenQuanAo, SUM(ct.SoLuong) AS TongBan, sp.Anh 
-            FROM SanPham sp
-            JOIN ChiTietHoaDonBan ct ON sp.MaQuanAo = ct.MaQuanAo
-            JOIN HoaDonBan hd ON ct.SoHoaDonBan = hd.SoHoaDonBan
-            GROUP BY sp.MaQuanAo, sp.TenQuanAo, sp.Anh
-            ORDER BY TongBan DESC
-            LIMIT 10
-        """;
-
         DefaultTableModel model = new DefaultTableModel(
             new String[] { "Mã quần áo", "Tên quần áo", "Số lượng đã bán", "Ảnh" }, 0
         );
 
-        try (Connection conn = ketnoiCSDL.getConnection();
-            PreparedStatement stmt = conn.prepareStatement(query);
-            ResultSet rs = stmt.executeQuery()) {
-
-            while (rs.next()) {
-                Vector<Object> row = new Vector<>();
-                row.add(rs.getString("MaQuanAo"));
-                row.add(rs.getString("TenQuanAo"));
-                row.add(rs.getInt("TongBan"));
-                row.add(rs.getString("Anh"));  // hoặc hiển thị ảnh nếu cần
-
-                model.addRow(row);
+        try {
+            java.util.List<Model.SanPham> list = productService.getTopSelling(10);
+            for (Model.SanPham sp : list) {
+                model.addRow(new Object[]{
+                    sp.getMaQuanAo(),
+                    sp.getTenQuanAo(),
+                    sp.getSoLuong(),
+                    sp.getAnh()
+                });
             }
-
             tblMathangbanchay.setModel(model);
+            GUI.theme.UITheme.styleTable(tblMathangbanchay);
         } catch (Exception e) {
             e.printStackTrace();
-            JOptionPane.showMessageDialog(null, "Lỗi khi tải mặt hàng bán chạy!");
+            JOptionPane.showMessageDialog(null, "Lỗi khi tải mặt hàng bán chạy: " + e.getMessage());
         }
+    }
+
+    private void styleUI() {
+        GUI.theme.UITheme.styleContainer(this);
+        GUI.theme.UITheme.styleTable(tblMathangbanchay);
+        Anh.setBackground(java.awt.Color.WHITE);
+        Anh.setBorder(javax.swing.BorderFactory.createLineBorder(GUI.theme.UITheme.BORDER_COLOR, 1, true));
     }
 
     /**
@@ -128,7 +113,6 @@ public class Mathangbanchay extends javax.swing.JPanel {
      * WARNING: Do NOT modify this code. The content of this method is always
      * regenerated by the Form Editor.
      */
-    @SuppressWarnings("unchecked")
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
 

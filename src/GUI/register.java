@@ -2,7 +2,6 @@ package GUI;
 
 import javax.swing.*;
 import java.awt.*;
-import BackEnd.RegisterService;
 
 public final class register extends javax.swing.JFrame {
 
@@ -21,19 +20,71 @@ public final class register extends javax.swing.JFrame {
     private JCheckBox chkShowPassword;
     private JCheckBox chkShowConfirmPassword;
     private JLabel lblTitle;
-    private JLabel lblCaptchaImage; // Label để hiện ảnh captcha
+    private JLabel lblCaptchaImage;
+
+    private final Service.IUserService userService = new Service.impl.UserServiceImpl();
+    private final Service.IAuthService authService = new Service.impl.AuthServiceImpl();
+    private Service.dto.CaptchaDTO currentCaptcha;
 
     public register() {
         initComponents();
-        RegisterService.loadRandomCaptcha(lblCaptchaImage);
-        btnReloadCaptcha.addActionListener(e -> RegisterService.changeCaptcha(lblCaptchaImage));
-        btnRegister.addActionListener(e -> RegisterService.registerUser(
-            txtFullName, txtUsername, txtPassword, txtConfirmPassword, txtEmail, txtPhone, txtAddress, txtAccountCode, txtCaptcha, this
-        ));
-        btnRegister.getRootPane().setDefaultButton(btnRegister);
-        btnBack.addActionListener(e -> RegisterService.goBack(this));
-        chkShowPassword.addActionListener(e -> RegisterService.togglePasswordVisibility(txtPassword, chkShowPassword));
-        chkShowConfirmPassword.addActionListener(e -> RegisterService.togglePasswordVisibility(txtConfirmPassword, chkShowConfirmPassword));
+        loadCaptcha();
+        btnReloadCaptcha.addActionListener(e -> loadCaptcha());
+        btnRegister.addActionListener(e -> handleRegister());
+        getRootPane().setDefaultButton(btnRegister);
+        btnBack.addActionListener(e -> {
+            GUI.util.AppNavigator.switchWindow(this, new Start());
+        });
+        chkShowPassword.addActionListener(e -> {
+            txtPassword.setEchoChar(chkShowPassword.isSelected() ? (char) 0 : '\u2022');
+        });
+        chkShowConfirmPassword.addActionListener(e -> {
+            txtConfirmPassword.setEchoChar(chkShowConfirmPassword.isSelected() ? (char) 0 : '\u2022');
+        });
+    }
+
+    private void loadCaptcha() {
+        currentCaptcha = authService.getRandomCaptcha();
+        if (currentCaptcha != null && currentCaptcha.getLinkAnh() != null) {
+            Image img = new ImageIcon(currentCaptcha.getLinkAnh()).getImage().getScaledInstance(150, 50, Image.SCALE_SMOOTH);
+            lblCaptchaImage.setIcon(new ImageIcon(img));
+        }
+    }
+
+    private void handleRegister() {
+        try {
+            String fullName = txtFullName.getText().trim();
+            String username = txtUsername.getText().trim();
+            String pass = String.valueOf(txtPassword.getPassword());
+            String confirmPass = String.valueOf(txtConfirmPassword.getPassword());
+            String email = txtEmail.getText().trim();
+            String phone = txtPhone.getText().trim();
+            String address = txtAddress.getText().trim();
+            String captcha = txtCaptcha.getText().trim();
+
+            if (fullName.isEmpty() || username.isEmpty() || pass.isEmpty() || email.isEmpty() || phone.isEmpty() || address.isEmpty()) {
+                JOptionPane.showMessageDialog(this, "Vui lòng nhập đầy đủ thông tin!", "Thông báo", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+
+            if (!pass.equals(confirmPass)) {
+                JOptionPane.showMessageDialog(this, "Mật khẩu xác nhận không khớp!", "Lỗi", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+
+            if (currentCaptcha == null || !currentCaptcha.validate(captcha)) {
+                JOptionPane.showMessageDialog(this, "Mã bảo vệ không chính xác!", "Lỗi", JOptionPane.ERROR_MESSAGE);
+                loadCaptcha();
+                return;
+            }
+
+            userService.registerKhachHang(username, pass, fullName, phone, address, email);
+            JOptionPane.showMessageDialog(this, "Đăng ký tài khoản thành công!", "Thành công", JOptionPane.INFORMATION_MESSAGE);
+            GUI.util.AppNavigator.switchWindow(this, new Start());
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, ex.getMessage(), "Lỗi đăng ký", JOptionPane.ERROR_MESSAGE);
+            loadCaptcha();
+        }
     }
 
     private void initComponents() {
@@ -142,7 +193,13 @@ public final class register extends javax.swing.JFrame {
         btnRegister = new JButton("Đăng ký");
         btnRegister.setBounds(200, 440, 120, 40);
         panelMain.add(btnRegister);
-        panelMain.setBackground(new Color(200, 173, 127));
+        panelMain.setBackground(GUI.theme.UITheme.BG_MAIN);
+        lblTitle.setFont(GUI.theme.UITheme.FONT_TITLE);
+        lblTitle.setForeground(GUI.theme.UITheme.TEXT_PRIMARY);
+        lblCaptchaImage.setBorder(BorderFactory.createLineBorder(GUI.theme.UITheme.BORDER_COLOR, 1, true));
+        GUI.theme.UITheme.stylePrimaryButton(btnRegister);
+        GUI.theme.UITheme.styleSecondaryButton(btnReloadCaptcha);
+        GUI.theme.UITheme.styleSecondaryButton(btnBack);
 
         this.add(panelMain);
         this.setSize(600, 550);

@@ -4,10 +4,6 @@
  */
 package GUI;
 
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
 import java.io.File;
 import java.awt.Image;
 import javax.swing.ImageIcon;
@@ -15,18 +11,26 @@ import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.table.DefaultTableModel;
 import java.awt.BorderLayout;
-import BackEnd.*;
 /**
  *
  * @author Neo 16
  */
-public class Nhanvienlaphoadon extends javax.swing.JPanel {
+public class Nhanvienlaphoadon extends javax.swing.JPanel implements Refreshable {
+
+    private final Service.IOrderService orderService = new Service.impl.OrderServiceImpl();
+    private final Service.IProductService productService = new Service.impl.ProductServiceImpl();
+
+    @Override
+    public void refresh() {
+        loadDuLieuGioHang();
+    }
 
     /**
      * Creates new form Nhanvienlaphoadon1
      */
     public Nhanvienlaphoadon() {
         initComponents();
+        styleUI();
         loadDuLieuGioHang();
 
         tblLaphoadon.addMouseListener(new java.awt.event.MouseAdapter() {
@@ -38,88 +42,97 @@ public class Nhanvienlaphoadon extends javax.swing.JPanel {
                     txtDongiaban.setText(tblLaphoadon.getValueAt(row, 2).toString());
                     txtSoluong.setText(tblLaphoadon.getValueAt(row, 3).toString());
                     txtTongtien.setText(tblLaphoadon.getValueAt(row, 4).toString());
-                }
 
-                 // Lấy đường dẫn ảnh theo MaQuanAo từ DB
-                try (Connection conn = ketnoiCSDL.getConnection()) {
-                    String sql = "SELECT Anh FROM SanPham WHERE MaQuanAo = ?";
-                    PreparedStatement pst = conn.prepareStatement(sql);
-                    pst.setString(1, tblLaphoadon.getValueAt(row, 1).toString());
-                    ResultSet rs = pst.executeQuery();
-                    if (rs.next()) {
-                        String duongDanAnh = rs.getString("Anh");
-                        hienThiAnh(duongDanAnh);  // Gọi hàm hiện ảnh bạn đã có
+                    try {
+                        int maQA = Integer.parseInt(tblLaphoadon.getValueAt(row, 1).toString());
+                        productService.getProductById(maQA).ifPresent(sp -> {
+                            if (sp.getAnh() != null && !sp.getAnh().isEmpty()) {
+                                hienThiAnh(sp.getAnh());
+                            }
+                        });
+                    } catch (Exception ex) {
+                        ex.printStackTrace();
                     }
-                } catch (SQLException ex) {
-                    JOptionPane.showMessageDialog(null, "Lỗi lấy ảnh sản phẩm: " + ex.getMessage());
                 }
             }
         });
+
         btnTimkiem.addActionListener(e -> {
             String maKH = txtMakhachhang.getText().trim();
-            DefaultTableModel model = DonHangDAO.timKiemTrongGioHang(maKH);
-            tblLaphoadon.setModel(model);
+            if (!maKH.isEmpty()) {
+                String[] columnNames = {"Mã Khách hàng", "Mã Quần Áo", "Đơn Giá Bán", "Số Lượng Đặt", "Tổng Tiền"};
+                DefaultTableModel model = new DefaultTableModel(columnNames, 0);
+                try {
+                    java.util.List<Model.ItemGioHang> items = orderService.getGioHang(maKH, 1);
+                    for (Model.ItemGioHang item : items) {
+                        model.addRow(new Object[] {
+                            item.getMaKhachHang(),
+                            item.getSanPham() != null ? item.getSanPham().getMaQuanAo() : "",
+                            item.getDonGiaBan(),
+                            item.getSoLuongDat(),
+                            item.getTongTien()
+                        });
+                    }
+                } catch (Exception ex) {
+                    ex.printStackTrace();
+                }
+                tblLaphoadon.setModel(model);
+            } else {
+                loadDuLieuGioHang();
+            }
         });
 
         btnLammoi.addActionListener(e -> {
-            // 1. Xóa trắng các textbox
             txtMakhachhang.setText("");
             txtMaquanao.setText("");
             txtDongiaban.setText("");
             txtTongtien.setText("");
             txtSoluong.setText("");
 
-            // 2. Xóa ảnh hiển thị (nếu có Panel ảnh riêng)
             Anh.removeAll();
             Anh.repaint();
 
-            // 3. Tải lại dữ liệu bảng GioHang
             loadDuLieuGioHang();
         });
 
         btnLaphoadon.addActionListener(e -> {
             int row = tblLaphoadon.getSelectedRow();
             if (row == -1) {
-                JOptionPane.showMessageDialog(null, "Vui lòng chọn dòng!");
+                JOptionPane.showMessageDialog(this, "Vui lòng chọn dòng cần lập hóa đơn!");
                 return;
             }
 
-            String maKH = tblLaphoadon.getValueAt(row, 0).toString();
-            String maQA = tblLaphoadon.getValueAt(row, 1).toString();
-            double donGia = Double.parseDouble(tblLaphoadon.getValueAt(row, 2).toString());
-            int soLuong = Integer.parseInt(tblLaphoadon.getValueAt(row, 3).toString());
+            try {
+                String maKH = tblLaphoadon.getValueAt(row, 0).toString();
+                int maQA = Integer.parseInt(tblLaphoadon.getValueAt(row, 1).toString());
+                java.math.BigDecimal donGia = new java.math.BigDecimal(tblLaphoadon.getValueAt(row, 2).toString());
+                int soLuong = Integer.parseInt(tblLaphoadon.getValueAt(row, 3).toString());
 
-            // Giả sử bạn có mã nhân viên đang đăng nhập như sau:
-            String maNV = SessionManager.getMaTaiKhoan();
+                String maNV = Service.UserSession.getInstance().getMaTaiKhoan();
 
-            DonHangDAO.lapHoaDon(maQA, soLuong, donGia, maKH, maNV, tblLaphoadon);
-            loadDuLieuGioHang(); // Sau khi lập hóa đơn xong thì reload lại bảng
+                Model.HoaDonBan hdb = orderService.lapHoaDonDonLe(maKH, maNV, maQA, soLuong, donGia);
+                JOptionPane.showMessageDialog(this, "Lập hóa đơn bán số " + hdb.getSoHoaDon() + " thành công!");
+                loadDuLieuGioHang();
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(this, "Lỗi lập hóa đơn: " + ex.getMessage());
+            }
         });
     }
 
     public void hienThiAnh(String duongDan) {
         try {
-            // Đảm bảo đường dẫn hợp lệ (kiểm tra xem tệp có tồn tại không)
             File file = new File(duongDan);
             if (!file.exists()) {
                 JOptionPane.showMessageDialog(null, "Ảnh không tồn tại tại: " + duongDan);
                 return;
             }
     
-            // Tạo đối tượng ImageIcon từ đường dẫn ảnh
             ImageIcon icon = new ImageIcon(duongDan);
-            // Tải ảnh và thay đổi kích thước phù hợp với JPanel (Anh)
             Image img = icon.getImage().getScaledInstance(Anh.getWidth(), Anh.getHeight(), Image.SCALE_SMOOTH);
-    
-            // Tạo một JLabel chứa ảnh đã thay đổi kích thước
             JLabel lbl = new JLabel(new ImageIcon(img));
-    
-            // Xóa hết nội dung cũ của JPanel trước khi thêm ảnh mới
             Anh.removeAll();
-            Anh.setLayout(new BorderLayout()); // Đảm bảo layout hợp lý
-            Anh.add(lbl, BorderLayout.CENTER); // Thêm JLabel vào giữa JPanel
-    
-            // Cập nhật lại giao diện
+            Anh.setLayout(new BorderLayout());
+            Anh.add(lbl, BorderLayout.CENTER);
             Anh.revalidate();
             Anh.repaint();
         } catch (Exception e) {
@@ -128,38 +141,36 @@ public class Nhanvienlaphoadon extends javax.swing.JPanel {
         }
     }
 
-
     public void loadDuLieuGioHang() {
-    // Bỏ cột ảnh, chỉ còn 5 cột
         String[] columnNames = {"Mã Khách hàng", "Mã Quần Áo", "Đơn Giá Bán", "Số Lượng Đặt", "Tổng Tiền"};
         DefaultTableModel model = new DefaultTableModel(columnNames, 0);
 
-        try (Connection conn = ketnoiCSDL.getConnection()) {
-            // Thêm điều kiện WHERE trạng thái = 1, và bỏ cột ảnh trong SELECT
-            String sql = "SELECT g.MaKhachHang, g.MaQuanAo, g.DonGiaBan, g.SoLuongDat, g.TongTien " +
-                        "FROM GioHang g " +
-                        "WHERE g.TrangThai = 1";  // Chỉ lấy sản phẩm trạng thái = 1
-
-            PreparedStatement ps = conn.prepareStatement(sql);
-            ResultSet rs = ps.executeQuery();
-
-            while (rs.next()) {
-                String maKH = rs.getString("MaKhachHang");
-                String maQA = rs.getString("MaQuanAo");
-                double donGia = rs.getDouble("DonGiaBan");
-                int soLuong = rs.getInt("SoLuongDat");
-                double tongTien = rs.getDouble("TongTien");
-
-                Object[] row = {maKH, maQA, donGia, soLuong, tongTien};
-                model.addRow(row);
+        try {
+            java.util.List<Model.ItemGioHang> items = orderService.getGioHangByTrangThai(1);
+            for (Model.ItemGioHang item : items) {
+                model.addRow(new Object[] {
+                    item.getMaKhachHang(),
+                    item.getSanPham() != null ? item.getSanPham().getMaQuanAo() : "",
+                    item.getDonGiaBan(),
+                    item.getSoLuongDat(),
+                    item.getTongTien()
+                });
             }
-
             tblLaphoadon.setModel(model);
-            tblLaphoadon.setRowHeight(20); // Bạn có thể chỉnh chiều cao hàng phù hợp
-
-        } catch (SQLException ex) {
-            JOptionPane.showMessageDialog(null, "Lỗi tải dữ liệu giỏ hàng: " + ex.getMessage());
+            GUI.theme.UITheme.styleTable(tblLaphoadon);
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, "Lỗi tải dữ liệu giỏ hàng: " + ex.getMessage());
         }
+    }
+
+    private void styleUI() {
+        GUI.theme.UITheme.styleContainer(this);
+        GUI.theme.UITheme.stylePrimaryButton(btnLaphoadon);
+        GUI.theme.UITheme.stylePrimaryButton(btnTimkiem);
+        GUI.theme.UITheme.styleSecondaryButton(btnLammoi);
+        GUI.theme.UITheme.styleTable(tblLaphoadon);
+        Anh.setBackground(java.awt.Color.WHITE);
+        Anh.setBorder(javax.swing.BorderFactory.createLineBorder(GUI.theme.UITheme.BORDER_COLOR, 1, true));
     }
 
     /**
@@ -167,7 +178,6 @@ public class Nhanvienlaphoadon extends javax.swing.JPanel {
      * WARNING: Do NOT modify this code. The content of this method is always
      * regenerated by the Form Editor.
      */
-    @SuppressWarnings("unchecked")
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
 
@@ -351,7 +361,6 @@ public class Nhanvienlaphoadon extends javax.swing.JPanel {
     }// </editor-fold>//GEN-END:initComponents
 
     private void btnTimkiemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnTimkiemActionPerformed
-        // TODO add your handling code here:
     }//GEN-LAST:event_btnTimkiemActionPerformed
 
 

@@ -5,27 +5,33 @@
 package GUI;
 
 import java.io.File;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
 import javax.swing.ImageIcon;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.table.DefaultTableModel;
-import BackEnd.*;
+import java.util.List;
 import java.awt.*;
 
 /**
  *
  * @author Neo 16
  */
-public class Giohang extends javax.swing.JPanel {
+public class Giohang extends javax.swing.JPanel implements Refreshable {
 
     /**
      * Creates new form Nhanvienlaphoadon1
      */
+    private final Service.IOrderService orderService = new Service.impl.OrderServiceImpl();
+    private final Service.IProductService productService = new Service.impl.ProductServiceImpl();
+
+    @Override
+    public void refresh() {
+        loadGioHang();
+    }
+
     public Giohang() {
         initComponents();
+        styleUI();
         loadGioHang();
         tblGiohang.addMouseListener(new java.awt.event.MouseAdapter() {
             public void mouseClicked(java.awt.event.MouseEvent evt) {
@@ -39,11 +45,10 @@ public class Giohang extends javax.swing.JPanel {
         btnXoa.addActionListener(e -> {
             int selectedRow = tblGiohang.getSelectedRow();
             if (selectedRow != -1) {
-                String maQuanAo = tblGiohang.getValueAt(selectedRow, 0).toString(); // Cột MaQuanAo
-                String maKhachHang = SessionManager.getMaTaiKhoan(); 
+                String maQuanAo = tblGiohang.getValueAt(selectedRow, 0).toString();
+                String maKhachHang = Service.UserSession.getInstance().getMaTaiKhoan();
 
-                GioHangService.xoaSanPhamKhoiGio(maQuanAo, maKhachHang);
-
+                orderService.xoaKhoiGioHang(maKhachHang, Integer.parseInt(maQuanAo));
                 loadGioHang();
                 txtMaquanao.setText("");
                 txtDongiaban.setText("");
@@ -58,66 +63,46 @@ public class Giohang extends javax.swing.JPanel {
     }
 
     private void loadGioHang() {
-        String maTaiKhoan = SessionManager.getMaTaiKhoan();
+        String maTaiKhoan = Service.UserSession.getInstance().getMaTaiKhoan();
 
         if (maTaiKhoan == null || maTaiKhoan.isEmpty()) {
             JOptionPane.showMessageDialog(this, "Bạn chưa đăng nhập!");
             return;
         }
 
-        String getMaKhachHangSQL = "SELECT MaKhachHang FROM khachhang WHERE MaTaiKhoan = ?";
-        String loadGioHangSQL = "SELECT g.MaQuanAo, s.TenQuanAo, g.DonGiaBan, g.SoLuongDat, " +
-                                "(g.DonGiaBan * g.SoLuongDat) AS TongTien, g.TrangThai " +
-                                "FROM giohang g JOIN sanpham s ON g.MaQuanAo = s.MaQuanAo " +
-                                "WHERE g.MaKhachHang = ?";
+        try {
+            List<Model.ItemGioHang> items = orderService.getGioHang(maTaiKhoan, null);
+            DefaultTableModel model = new DefaultTableModel();
+            model.setColumnIdentifiers(new String[]{
+                "Mã Quần Áo", "Tên Quần Áo", "Đơn Giá Bán", "Số Lượng Đặt", "Tổng Tiền", "Trạng Thái"
+            });
 
-        try (Connection conn = ketnoiCSDL.getConnection()) {
-            String maKhachHang = null;
-
-            try (PreparedStatement pst1 = conn.prepareStatement(getMaKhachHangSQL)) {
-                pst1.setString(1, maTaiKhoan);
-                try (ResultSet rs = pst1.executeQuery()) {
-                    if (rs.next()) {
-                        maKhachHang = rs.getString("MaKhachHang");
-                    } else {
-                        JOptionPane.showMessageDialog(this, "Không tìm thấy mã khách hàng!");
-                        return;
-                    }
-                }
+            for (Model.ItemGioHang item : items) {
+                String trangThaiText = (item.getTrangThai() == 0) ? "Chưa đặt" : "Đã đặt";
+                Object[] row = new Object[]{
+                    item.getSanPham().getMaQuanAo(),
+                    item.getSanPham().getTenQuanAo(),
+                    item.getDonGiaBan(),
+                    item.getSoLuongDat(),
+                    item.getTongTien(),
+                    trangThaiText
+                };
+                model.addRow(row);
             }
-
-            try (PreparedStatement pst2 = conn.prepareStatement(loadGioHangSQL)) {
-                pst2.setString(1, maKhachHang);
-                try (ResultSet rs = pst2.executeQuery()) {
-                    DefaultTableModel model = new DefaultTableModel();
-                    model.setColumnIdentifiers(new String[]{
-                        "Mã Quần Áo", "Tên Quần Áo", "Đơn Giá Bán", "Số Lượng Đặt", "Tổng Tiền", "Trạng Thái"
-                    });
-
-                    while (rs.next()) {
-                        int trangThai = rs.getInt("TrangThai");
-                        String trangThaiText = (trangThai == 0) ? "Chưa đặt" : "Đã đặt";
-
-                        Object[] row = new Object[]{
-                            rs.getString("MaQuanAo"),
-                            rs.getString("TenQuanAo"),
-                            rs.getBigDecimal("DonGiaBan"),
-                            rs.getInt("SoLuongDat"),
-                            rs.getBigDecimal("TongTien"),
-                            trangThaiText
-                        };
-                        model.addRow(row);
-                    }
-
-                    tblGiohang.setModel(model);
-                }
-            }
-
+            tblGiohang.setModel(model);
+            GUI.theme.UITheme.styleTable(tblGiohang);
         } catch (Exception ex) {
             JOptionPane.showMessageDialog(this, "Lỗi khi tải giỏ hàng: " + ex.getMessage());
         }
     }
 
+    private void styleUI() {
+        GUI.theme.UITheme.styleContainer(this);
+        GUI.theme.UITheme.styleDangerButton(btnXoa);
+        GUI.theme.UITheme.styleTable(tblGiohang);
+        Anh.setBackground(java.awt.Color.WHITE);
+        Anh.setBorder(javax.swing.BorderFactory.createLineBorder(GUI.theme.UITheme.BORDER_COLOR, 1, true));
+    }
 
     private void hienThiChiTietSanPham(int row) {
         String maQuanAo = tblGiohang.getValueAt(row, 0).toString();
@@ -132,20 +117,11 @@ public class Giohang extends javax.swing.JPanel {
         txtSoluong.setText(soLuong);
         txtTongtien.setText(tongTien);
 
-        // Gọi MySQL để lấy tên ảnh từ bảng SanPham
-        String sql = "SELECT Anh FROM sanpham WHERE MaQuanAo = ?";
-        try (Connection conn = ketnoiCSDL.getConnection();
-            PreparedStatement pst = conn.prepareStatement(sql)) {
-            pst.setString(1, maQuanAo);
-            try (ResultSet rs = pst.executeQuery()) {
-                if (rs.next()) {
-                    String tenAnh = rs.getString("Anh");
-                    hienThiAnh(tenAnh); // hàm bên dưới
-                }
+        productService.getProductById(Integer.parseInt(maQuanAo)).ifPresent(sp -> {
+            if (sp.getAnh() != null && !sp.getAnh().isEmpty()) {
+                hienThiAnh(sp.getAnh());
             }
-        } catch (Exception e) {
-            JOptionPane.showMessageDialog(this, "Lỗi tải ảnh: " + e.getMessage());
-        }
+        });
     }
 
     public void hienThiAnh(String duongDan) {
@@ -186,7 +162,6 @@ public class Giohang extends javax.swing.JPanel {
      * WARNING: Do NOT modify this code. The content of this method is always
      * regenerated by the Form Editor.
      */
-    @SuppressWarnings("unchecked")
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
 
@@ -351,9 +326,6 @@ public class Giohang extends javax.swing.JPanel {
         );
     }// </editor-fold>//GEN-END:initComponents
 
-    private void btnTimkiemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnTimkiemActionPerformed
-        // TODO add your handling code here:
-    }//GEN-LAST:event_btnTimkiemActionPerformed
 
 
     // Variables declaration - do not modify//GEN-BEGIN:variables

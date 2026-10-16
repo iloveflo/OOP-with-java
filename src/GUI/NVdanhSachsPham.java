@@ -5,11 +5,7 @@
 package GUI;
 
 import java.io.File;
-import java.sql.Connection;
-import java.sql.ResultSet;
-import java.sql.Statement;
 import java.awt.Image;
-import BackEnd.*;
 import java.awt.BorderLayout;
 import javax.swing.ImageIcon;
 import javax.swing.JLabel;
@@ -20,22 +16,25 @@ import javax.swing.table.DefaultTableModel;
  *
  * @author Neo 16
  */
-public class NVdanhsachsPham extends javax.swing.JPanel {
+public class NVdanhSachsPham extends javax.swing.JPanel implements Refreshable {
+
+    private final Service.IProductService productService = new Service.impl.ProductServiceImpl();
+    private final DAO.IDanhMucDAO danhMucDAO = new DAO.DanhMucDAOImpl();
+
+    @Override
+    public void refresh() {
+        doDuLieuSanPham();
+    }
 
     /**
-     * Creates new form NVdanhsachsPham1
+     * Creates new form NVdanhSachsPham
      */
-    public NVdanhsachsPham() {
+    public NVdanhSachsPham() {
         initComponents();
+        styleUI();
         
+        loadComboBoxData();
         doDuLieuSanPham();
-        Sanphamdata.doDuLieuVaoComboBox(boxLoai, "theloai", "TenLoai");
-        Sanphamdata.doDuLieuVaoComboBox(boxChatlieu, "chatlieu", "TenChatLieu");
-        Sanphamdata.doDuLieuVaoComboBox(boxDoituong, "doituong", "TenDoiTuong");
-        Sanphamdata.doDuLieuVaoComboBox(boxKichco, "co", "TenCo");
-        Sanphamdata.doDuLieuVaoComboBox(boxMua, "mua", "TenMua");
-        Sanphamdata.doDuLieuVaoComboBox(boxMau, "mau", "TenMau");
-        Sanphamdata.doDuLieuVaoComboBox(boxNoisanxuat, "noisanxuat", "TenNSX");
 
         tblDsachSpham.addMouseListener(new java.awt.event.MouseAdapter() {
             public void mouseClicked(java.awt.event.MouseEvent evt) {
@@ -44,25 +43,46 @@ public class NVdanhsachsPham extends javax.swing.JPanel {
         });
         
         btnLoc.addActionListener(e -> {
-            String maquanao = txtMaquanao.getText().trim();
-            String loai = boxLoai.getSelectedItem() != null ? boxLoai.getSelectedItem().toString() : null;
-            String chatlieu = boxChatlieu.getSelectedItem() != null ? boxChatlieu.getSelectedItem().toString() : null;
-            String doituong = boxDoituong.getSelectedItem() != null ? boxDoituong.getSelectedItem().toString() : null;
-            String kichco = boxKichco.getSelectedItem() != null ? boxKichco.getSelectedItem().toString() : null;
-            String mua = boxMua.getSelectedItem() != null ? boxMua.getSelectedItem().toString() : null;
-            String mau = boxMau.getSelectedItem() != null ? boxMau.getSelectedItem().toString() : null;
-            String nsx = boxNoisanxuat.getSelectedItem() != null ? boxNoisanxuat.getSelectedItem().toString() : null;
-        
-            Sanphamdata service = new Sanphamdata();
-            DefaultTableModel model = service.locSanPham(maquanao, loai, chatlieu, doituong, kichco, mua, mau, nsx);
+            Integer idLoai = getSelectedLoaiId();
+            Integer idCo = getSelectedCoId();
+            Integer idChatLieu = getSelectedChatLieuId();
+            Integer idDoiTuong = getSelectedDoiTuongId();
+            Integer idMau = getSelectedMauId();
+            Integer idMua = getSelectedMuaId();
+            Integer idNSX = getSelectedNSXId();
+
+            java.util.List<Model.SanPham> filtered = productService.filterProducts(idLoai, idCo, idChatLieu, idDoiTuong, idMau, idMua, idNSX);
+            DefaultTableModel model = new DefaultTableModel(
+                new String[] {
+                    "Mã quần áo", "Tên quần áo", "Thể loại", "Cỡ", "Chất liệu", 
+                    "Màu", "Đối tượng", "Mùa", "Nơi sản xuất", 
+                    "Đơn giá bán", "Đơn giá nhập", "Số lượng", "Ảnh"
+                }, 0
+            );
             tblDsachSpham.setModel(model);
+            for (Model.SanPham sp : filtered) {
+                model.addRow(new Object[] {
+                    sp.getMaQuanAo(),
+                    sp.getTenQuanAo(),
+                    sp.getTheLoai() != null ? sp.getTheLoai().getTenLoai() : "",
+                    sp.getCo() != null ? sp.getCo().getTenCo() : "",
+                    sp.getChatLieu() != null ? sp.getChatLieu().getTenChatLieu() : "",
+                    sp.getMau() != null ? sp.getMau().getTenMau() : "",
+                    sp.getDoiTuong() != null ? sp.getDoiTuong().getTenDoiTuong() : "",
+                    sp.getMua() != null ? sp.getMua().getTenMua() : "",
+                    sp.getNoiSanXuat() != null ? sp.getNoiSanXuat().getTenNSX() : "",
+                    sp.getDonGiaBan(),
+                    sp.getDonGiaNhap(),
+                    sp.getSoLuong(),
+                    sp.getAnh()
+                });
+            }
+            GUI.theme.UITheme.styleTable(tblDsachSpham);
         });
 
         btnLammoi.addActionListener(e -> {
-            // Làm mới dữ liệu bảng sản phẩm
             doDuLieuSanPham();
-        
-            // Reset comboboxes
+
             boxLoai.setSelectedIndex(-1);
             boxChatlieu.setSelectedIndex(-1);
             boxDoituong.setSelectedIndex(-1);
@@ -70,17 +90,75 @@ public class NVdanhsachsPham extends javax.swing.JPanel {
             boxMua.setSelectedIndex(-1);
             boxMau.setSelectedIndex(-1);
             boxNoisanxuat.setSelectedIndex(-1);
-        
-            // Xóa dữ liệu các textboxes
+
             txtMaquanao.setText("");
             txtTenquanao.setText("");
             txtDongianhap.setText("");
             txtDongiaban.setText("");
             txtSoluong.setText("");
             txtAnh.setText("");
-        
-           hienThiAnh("src/GUI/icons/Ảnh chụp màn hình 2025-05-07 194832.png");  
+
+            hienThiAnh("src/GUI/icons/Ảnh chụp màn hình 2025-05-07 194832.png");  
         });
+    }
+
+    private void loadComboBoxData() {
+        boxLoai.removeAllItems();
+        danhMucDAO.getAllTheLoai().forEach(item -> boxLoai.addItem(item.getTenLoai()));
+        boxChatlieu.removeAllItems();
+        danhMucDAO.getAllChatLieu().forEach(item -> boxChatlieu.addItem(item.getTenChatLieu()));
+        boxDoituong.removeAllItems();
+        danhMucDAO.getAllDoiTuong().forEach(item -> boxDoituong.addItem(item.getTenDoiTuong()));
+        boxKichco.removeAllItems();
+        danhMucDAO.getAllCo().forEach(item -> boxKichco.addItem(item.getTenCo()));
+        boxMua.removeAllItems();
+        danhMucDAO.getAllMua().forEach(item -> boxMua.addItem(item.getTenMua()));
+        boxMau.removeAllItems();
+        danhMucDAO.getAllMau().forEach(item -> boxMau.addItem(item.getTenMau()));
+        boxNoisanxuat.removeAllItems();
+        danhMucDAO.getAllNoiSanXuat().forEach(item -> boxNoisanxuat.addItem(item.getTenNSX()));
+    }
+
+    private Integer getSelectedLoaiId() {
+        String sel = (String) boxLoai.getSelectedItem();
+        if (sel == null) return null;
+        return danhMucDAO.getAllTheLoai().stream().filter(x -> x.getTenLoai().equalsIgnoreCase(sel)).map(Model.TheLoai::getMaLoai).findFirst().orElse(null);
+    }
+
+    private Integer getSelectedCoId() {
+        String sel = (String) boxKichco.getSelectedItem();
+        if (sel == null) return null;
+        return danhMucDAO.getAllCo().stream().filter(x -> x.getTenCo().equalsIgnoreCase(sel)).map(Model.Co::getMaCo).findFirst().orElse(null);
+    }
+
+    private Integer getSelectedChatLieuId() {
+        String sel = (String) boxChatlieu.getSelectedItem();
+        if (sel == null) return null;
+        return danhMucDAO.getAllChatLieu().stream().filter(x -> x.getTenChatLieu().equalsIgnoreCase(sel)).map(Model.ChatLieu::getMaChatLieu).findFirst().orElse(null);
+    }
+
+    private Integer getSelectedMauId() {
+        String sel = (String) boxMau.getSelectedItem();
+        if (sel == null) return null;
+        return danhMucDAO.getAllMau().stream().filter(x -> x.getTenMau().equalsIgnoreCase(sel)).map(Model.Mau::getMaMau).findFirst().orElse(null);
+    }
+
+    private Integer getSelectedDoiTuongId() {
+        String sel = (String) boxDoituong.getSelectedItem();
+        if (sel == null) return null;
+        return danhMucDAO.getAllDoiTuong().stream().filter(x -> x.getTenDoiTuong().equalsIgnoreCase(sel)).map(Model.DoiTuong::getMaDoiTuong).findFirst().orElse(null);
+    }
+
+    private Integer getSelectedMuaId() {
+        String sel = (String) boxMua.getSelectedItem();
+        if (sel == null) return null;
+        return danhMucDAO.getAllMua().stream().filter(x -> x.getTenMua().equalsIgnoreCase(sel)).map(Model.Mua::getMaMua).findFirst().orElse(null);
+    }
+
+    private Integer getSelectedNSXId() {
+        String sel = (String) boxNoisanxuat.getSelectedItem();
+        if (sel == null) return null;
+        return danhMucDAO.getAllNoiSanXuat().stream().filter(x -> x.getTenNSX().equalsIgnoreCase(sel)).map(Model.NoiSanXuat::getMaNSX).findFirst().orElse(null);
     }
 
     public void doDuLieuSanPham() {
@@ -92,49 +170,41 @@ public class NVdanhsachsPham extends javax.swing.JPanel {
             }, 0
         );
         tblDsachSpham.setModel(model);
-    
-        String sql = """
-            SELECT 
-                sp.MaQuanAo, sp.TenQuanAo, tl.TenLoai, c.TenCo, cl.TenChatLieu,
-                m.TenMau, dt.TenDoiTuong, mu.TenMua, nsx.TenNSX,
-                sp.DonGiaBan, sp.DonGiaNhap, sp.SoLuong, sp.Anh
-            FROM sanpham sp
-            JOIN theloai tl ON sp.MaLoai = tl.MaLoai
-            JOIN co c ON sp.MaCo = c.MaCo
-            JOIN chatlieu cl ON sp.MaChatLieu = cl.MaChatLieu
-            JOIN mau m ON sp.MaMau = m.MaMau
-            JOIN doituong dt ON sp.MaDoiTuong = dt.MaDoiTuong
-            JOIN mua mu ON sp.MaMua = mu.MaMua
-            JOIN noisanxuat nsx ON sp.MaNSX = nsx.MaNSX
-        """;
-    
-        try (Connection conn = ketnoiCSDL.getConnection();
-             Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery(sql)) {
-    
-            while (rs.next()) {
+
+        try {
+            java.util.List<Model.SanPham> list = productService.getAllProducts();
+            for (Model.SanPham sp : list) {
                 Object[] row = new Object[] {
-                    rs.getInt("MaQuanAo"),
-                    rs.getString("TenQuanAo"),
-                    rs.getString("TenLoai"),
-                    rs.getString("TenCo"),
-                    rs.getString("TenChatLieu"),
-                    rs.getString("TenMau"),
-                    rs.getString("TenDoiTuong"),
-                    rs.getString("TenMua"),
-                    rs.getString("TenNSX"),
-                    rs.getDouble("DonGiaBan"),
-                    rs.getDouble("DonGiaNhap"),
-                    rs.getInt("SoLuong"),
-                    rs.getString("Anh") // Hiện đường dẫn hoặc tên file ảnh
+                    sp.getMaQuanAo(),
+                    sp.getTenQuanAo(),
+                    sp.getTheLoai() != null ? sp.getTheLoai().getTenLoai() : "",
+                    sp.getCo() != null ? sp.getCo().getTenCo() : "",
+                    sp.getChatLieu() != null ? sp.getChatLieu().getTenChatLieu() : "",
+                    sp.getMau() != null ? sp.getMau().getTenMau() : "",
+                    sp.getDoiTuong() != null ? sp.getDoiTuong().getTenDoiTuong() : "",
+                    sp.getMua() != null ? sp.getMua().getTenMua() : "",
+                    sp.getNoiSanXuat() != null ? sp.getNoiSanXuat().getTenNSX() : "",
+                    sp.getDonGiaBan(),
+                    sp.getDonGiaNhap(),
+                    sp.getSoLuong(),
+                    sp.getAnh()
                 };
                 model.addRow(row);
             }
-    
+            GUI.theme.UITheme.styleTable(tblDsachSpham);
         } catch (Exception e) {
             e.printStackTrace();
             JOptionPane.showMessageDialog(null, "Lỗi khi tải dữ liệu sản phẩm:\n" + e.getMessage());
         }
+    }
+
+    private void styleUI() {
+        GUI.theme.UITheme.styleContainer(this);
+        GUI.theme.UITheme.stylePrimaryButton(btnLoc);
+        GUI.theme.UITheme.styleSecondaryButton(btnLammoi);
+        GUI.theme.UITheme.styleTable(tblDsachSpham);
+        Anh.setBackground(java.awt.Color.WHITE);
+        Anh.setBorder(javax.swing.BorderFactory.createLineBorder(GUI.theme.UITheme.BORDER_COLOR, 1, true));
     }
 
     public void hienThiChiTietSanPham() {
@@ -194,7 +264,6 @@ public class NVdanhsachsPham extends javax.swing.JPanel {
      * WARNING: Do NOT modify this code. The content of this method is always
      * regenerated by the Form Editor.
      */
-    @SuppressWarnings("unchecked")
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
 
