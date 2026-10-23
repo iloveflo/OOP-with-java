@@ -103,9 +103,15 @@ public class AuthServiceImpl implements IAuthService {
                 }
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            // DB connection or query failed
         }
-        return null;
+        // Fallback in-memory captcha
+        String chars = "23456789abcdefhkmnprstuvwxyz";
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < 5; i++) {
+            sb.append(chars.charAt(random.nextInt(chars.length())));
+        }
+        return new CaptchaDTO(0, "", sb.toString());
     }
 }
 

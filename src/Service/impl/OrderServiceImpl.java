@@ -154,5 +154,20 @@ public class OrderServiceImpl implements IOrderService {
 
         return lapHoaDonBan(maKhachHang, maNhanVien, List.of(item));
     }
+
+    @Override
+    public List<HoaDonBan> getAllOrders() {
+        return hoaDonBanDAO.findAll();
+    }
+
+    @Override
+    public List<HoaDonBan> getOrdersByCustomer(String maKhachHang) {
+        return hoaDonBanDAO.findByKhachHang(maKhachHang);
+    }
+
+    @Override
+    public Optional<HoaDonBan> getOrderById(int id) {
+        return hoaDonBanDAO.findById(id);
+    }
 }
 

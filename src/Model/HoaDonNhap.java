@@ -23,6 +23,14 @@ public class HoaDonNhap extends HoaDon {
         this.nhaCungCap = nhaCungCap;
     }
 
+    public Date getNgayNhap() {
+        return getNgayLap();
+    }
+
+    public void setNgayNhap(Date ngayNhap) {
+        setNgayLap(ngayNhap);
+    }
+
     @Override
     public String getLoaiHoaDon() {
         return "Hóa Đơn Nhập";

@@ -27,6 +27,14 @@ public class CongViec {
         this.tenCongViec = tenCongViec;
     }
 
+    public int getMaCV() {
+        return maCongViec;
+    }
+
+    public String getTenCV() {
+        return tenCongViec;
+    }
+
     @Override
     public String toString() {
         return tenCongViec;

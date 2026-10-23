@@ -1,8 +1,6 @@
 package Service.impl;
 
 import DAO.DatabaseConnection;
-import GUI.OTP;
-import GUI.Start;
 import Service.IOTPService;
 import jakarta.mail.Authenticator;
 import jakarta.mail.Message;
@@ -25,10 +23,9 @@ public class OTPServiceImpl implements IOTPService {
     private final Random random = new Random();
 
     @Override
-    public boolean sendOTP(String tenDangNhap, JFrame currentFrame) {
+    public String generateAndSendOTP(String tenDangNhap) {
         if (tenDangNhap == null || tenDangNhap.trim().isEmpty()) {
-            JOptionPane.showMessageDialog(null, "Vui lòng nhập tên đăng nhập.");
-            return false;
+            return null;
         }
 
         try (Connection conn = DatabaseConnection.getInstance().getConnection()) {
@@ -46,30 +43,29 @@ public class OTPServiceImpl implements IOTPService {
                         String email = "KhachHang".equalsIgnoreCase(loai) ? rs.getString("EmailKH") : rs.getString("EmailNV");
 
                         if (email == null || email.trim().isEmpty()) {
-                            JOptionPane.showMessageDialog(null, "Không tìm thấy email cho tài khoản này.");
-                            return false;
+                            return null;
                         }
 
                         String otp = generateOTP(6);
                         boolean sent = sendEmail(email, otp);
-
-                        if (sent) {
-                            JOptionPane.showMessageDialog(null, "Mã OTP đã được gửi tới email: " + email);
-                            GUI.util.AppNavigator.switchWindow(currentFrame, new OTP(tenDangNhap.trim(), otp));
-                            return true;
-                        } else {
-                            JOptionPane.showMessageDialog(null, "Gửi email thất bại. Kiểm tra lại kết nối.");
-                            return false;
-                        }
-                    } else {
-                        JOptionPane.showMessageDialog(null, "Tên đăng nhập không tồn tại.");
-                        return false;
+                        return sent ? otp : null;
                     }
                 }
             }
         } catch (Exception ex) {
             ex.printStackTrace();
-            JOptionPane.showMessageDialog(null, "Lỗi: " + ex.getMessage());
+        }
+        return null;
+    }
+
+    @Override
+    public boolean sendOTP(String tenDangNhap, JFrame currentFrame) {
+        String otp = generateAndSendOTP(tenDangNhap);
+        if (otp != null) {
+            JOptionPane.showMessageDialog(currentFrame, "Mã OTP đã được gửi tới email của tài khoản!");
+            return true;
+        } else {
+            JOptionPane.showMessageDialog(currentFrame, "Không thể gửi OTP. Vui lòng kiểm tra lại tên đăng nhập hoặc kết nối.");
             return false;
         }
     }
@@ -77,12 +73,12 @@ public class OTPServiceImpl implements IOTPService {
     @Override
     public boolean verifyAndResetPassword(String nhapOTP, String expectedOTP, String tenDangNhap, JFrame currentFrame) {
         if (nhapOTP == null || nhapOTP.trim().isEmpty()) {
-            JOptionPane.showMessageDialog(null, "Vui lòng nhập mã OTP.");
+            JOptionPane.showMessageDialog(currentFrame, "Vui lòng nhập mã OTP.");
             return false;
         }
 
         if (!nhapOTP.trim().equals(expectedOTP)) {
-            JOptionPane.showMessageDialog(null, "Mã OTP không đúng.");
+            JOptionPane.showMessageDialog(currentFrame, "Mã OTP không đúng.");
             return false;
         }
 
@@ -95,16 +91,15 @@ public class OTPServiceImpl implements IOTPService {
 
                 int rows = stmt.executeUpdate();
                 if (rows > 0) {
-                    JOptionPane.showMessageDialog(null, "Đặt lại mật khẩu thành công!\nMật khẩu mới là: admin123");
-                    GUI.util.AppNavigator.switchWindow(currentFrame, new Start());
+                    JOptionPane.showMessageDialog(currentFrame, "Đặt lại mật khẩu thành công!\nMật khẩu mới là: admin123");
                     return true;
                 } else {
-                    JOptionPane.showMessageDialog(null, "Không tìm thấy tài khoản.");
+                    JOptionPane.showMessageDialog(currentFrame, "Không tìm thấy tài khoản.");
                 }
             }
         } catch (Exception e) {
             e.printStackTrace();
-            JOptionPane.showMessageDialog(null, "Lỗi: " + e.getMessage());
+            JOptionPane.showMessageDialog(currentFrame, "Lỗi: " + e.getMessage());
         }
         return false;
     }

@@ -178,6 +178,42 @@ public class SanPhamDAOImpl implements ISanPhamDAO {
     }
 
     @Override
+    public List<SanPham> searchAndFilter(String keyword, Integer maLoai, Integer maCo, Integer maChatLieu, Integer maDoiTuong, Integer maMau, Integer maMua, Integer maNSX) {
+        List<SanPham> list = new ArrayList<>();
+        StringBuilder sql = new StringBuilder(BASE_SELECT).append(" WHERE 1=1 ");
+        List<Object> params = new ArrayList<>();
+
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            sql.append(" AND (LOWER(s.TenQuanAo) LIKE ? OR CAST(s.MaQuanAo AS CHAR) LIKE ?) ");
+            String kw = "%" + keyword.trim().toLowerCase() + "%";
+            params.add(kw);
+            params.add(kw);
+        }
+        if (maLoai != null) { sql.append(" AND s.MaLoai = ? "); params.add(maLoai); }
+        if (maCo != null) { sql.append(" AND s.MaCo = ? "); params.add(maCo); }
+        if (maChatLieu != null) { sql.append(" AND s.MaChatLieu = ? "); params.add(maChatLieu); }
+        if (maDoiTuong != null) { sql.append(" AND s.MaDoiTuong = ? "); params.add(maDoiTuong); }
+        if (maMau != null) { sql.append(" AND s.MaMau = ? "); params.add(maMau); }
+        if (maMua != null) { sql.append(" AND s.MaMua = ? "); params.add(maMua); }
+        if (maNSX != null) { sql.append(" AND s.MaNSX = ? "); params.add(maNSX); }
+
+        try (Connection conn = DatabaseConnection.getInstance().getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql.toString())) {
+            for (int i = 0; i < params.size(); i++) {
+                ps.setObject(i + 1, params.get(i));
+            }
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    list.add(mapResultSetToEntity(rs));
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return list;
+    }
+
+    @Override
     public List<SanPham> getTopSelling(int limit) {
         List<SanPham> list = new ArrayList<>();
         String sql = """

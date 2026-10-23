@@ -14,5 +14,8 @@ public interface IOrderService {
     void datHang(String maKhachHang);
     HoaDonBan lapHoaDonBan(String maKhachHang, String maNhanVien, List<ItemGioHang> items) throws Exception;
     HoaDonBan lapHoaDonDonLe(String maKhachHang, String maNhanVien, int maQuanAo, int soLuong, BigDecimal donGiaBan) throws Exception;
+    List<HoaDonBan> getAllOrders();
+    List<HoaDonBan> getOrdersByCustomer(String maKhachHang);
+    java.util.Optional<HoaDonBan> getOrderById(int id);
 }
 

@@ -63,8 +63,18 @@ public class ProductServiceImpl implements IProductService {
     }
 
     @Override
-    public List<SanPham> filterProducts(Integer maLoai, Integer maCo, Integer maChatLieu, Integer maDoiTuong, Integer maMau, Integer maMua, Integer maNSX) {
-        return sanPhamDAO.filter(maLoai, maCo, maChatLieu, maDoiTuong, maMau, maMua, maNSX);
+    public List<SanPham> filterProducts(Integer maLoai, Integer maCo, Integer maChatLieu, Integer maDoiTuong, Integer maMau, Integer maMau2, Integer maNSX) {
+        return sanPhamDAO.filter(maLoai, maCo, maChatLieu, maDoiTuong, maMau, maMau2, maNSX);
+    }
+
+    @Override
+    public List<SanPham> searchAndFilter(String keyword, Integer maLoai, Integer maCo, Integer maChatLieu, Integer maDoiTuong, Integer maMau, Integer maMua, Integer maNSX) {
+        return sanPhamDAO.searchAndFilter(keyword, maLoai, maCo, maChatLieu, maDoiTuong, maMau, maMua, maNSX);
+    }
+
+    @Override
+    public DAO.IDanhMucDAO getDanhMucDAO() {
+        return new DAO.DanhMucDAOImpl();
     }
 
     @Override

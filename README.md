@@ -1,297 +1,428 @@
-# 👕 CỬA HÀNG QUẦN ÁO BDTHD - ENTERPRISE DESKTOP POS & ERP SYSTEM
+# 👕 HỆ THỐNG QUẢN LÝ CỬA HÀNG QUẦN ÁO (CLOTHING STORE MANAGEMENT SYSTEM)
 
-> **BDTHD – Tôn vinh phong cách, khẳng định cá tính**  
-> Ứng dụng quản trị và bán hàng chuyên nghiệp dành cho chuỗi cửa hàng thời trang, xây dựng trên nền tảng **Java Swing**, thiết kế theo **Kiến trúc hướng đối tượng (OOP)** đa tầng và giao diện **Enterprise UI 2026** với thư viện FlatLaf.
+> **"Tôn vinh phong cách - Khẳng định cá tính"**  
+> Ứng dụng Desktop chuyên nghiệp quản lý bán hàng, kho thời trang và chuỗi cung ứng, xây dựng trên nền tảng **Java Swing thuần** kết hợp thư viện giao diện phẳng **FlatLaf 3.5.4**, tuân thủ nghiêm ngặt **Kiến trúc phân tầng (Layered Architecture)** và nguyên lý lập trình hướng đối tượng (**OOP**).
 
 ---
 
 ## 📋 Mục lục
 
-1. [Tổng quan & Kiến trúc phần mềm](#-tổng-quan--kiến-trúc-phần-mềm)
-2. [Thiết kế giao diện chuẩn Doanh nghiệp 2026](#-thiết-kế-giao-diện-chuẩn-doanh-nghiệp-2026)
-3. [Tính năng hệ thống](#-tính-năng-hệ-thống)
-4. [Phân quyền người dùng (RBAC)](#-phân-quyền-người-dùng-rbac)
-5. [Cấu trúc mã nguồn](#-cấu-trúc-mã-nguồn)
-6. [Công nghệ & Thư viện sử dụng](#-công-nghệ--thư-viện-sử-dụng)
-7. [Yêu cầu hệ thống](#-yêu-cầu-hệ-thống)
-8. [Hướng dẫn cài đặt & Khởi chạy](#-hướng-dẫn-cài-đặt--khởi-chạy)
-9. [Cơ sở dữ liệu](#-cơ-sở-dữ-liệu)
+1. [Tổng quan dự án](#-tổng-quan-dự-án)
+2. [Kiến trúc hệ thống & Nguyên lý OOP](#-kiến-trúc-hệ-thống--nguyên-lý-oop)
+3. [Phân quyền người dùng (RBAC Matrix)](#-phân-quyền-người-dùng-rbac-matrix)
+4. [Tính năng chi tiết theo phân hệ](#-tính-năng-chi-tiết-theo-phân-hệ)
+5. [Thiết kế giao diện Modern Flat UI](#-thiết-kế-giao-diện-modern-flat-ui)
+6. [Cấu trúc mã nguồn chi tiết](#-cấu-trúc-mã-nguồn-chi-tiết)
+7. [Cơ sở dữ liệu (Database Schema)](#-cơ-sở-dữ-liệu-database-schema)
+8. [Công nghệ & Thư viện phụ thuộc](#-công-nghệ--thư-viện-phụ-thuộc)
+9. [Yêu cầu hệ thống & Hướng dẫn cài đặt](#-yêu-cầu-hệ-thống--hướng-dẫn-cài-đặt)
+10. [Hướng dẫn biên dịch & Vận hành](#-hướng-dẫn-biên-dịch--vận-hành)
 
 ---
 
-## 🏛 Tổng quan & Kiến trúc phần mềm
+## 🌟 Tổng quan dự án
 
-Hệ thống được tái cấu trúc hoàn chỉnh theo mô hình **3-Tier Layered Architecture** chuẩn mực công nghiệp, tuân thủ nghiêm ngặt các nguyên lý **SOLID** và lập trình hướng đối tượng (**OOP**):
+Dự án là giải pháp toàn diện cho hoạt động vận hành của một cửa hàng / chuỗi cửa hàng thời trang:
+- **Quản lý bán hàng tại quầy (POS)**: Lập hóa đơn bán, chọn sản phẩm tồn kho, chiết khấu, tự động tính tổng tiền và in hóa đơn Excel.
+- **Mua sắm trực tuyến cho khách hàng**: Giao diện thẻ sản phẩm (Product Cards Grid), quản lý giỏ hàng và đặt hàng trực tiếp.
+- **Quản lý kho & Nhập hàng**: Nhập hàng từ nhà cung cấp, kiểm soát số lượng tồn, cảnh báo hàng sắp hết kho (`Số lượng <= 10`).
+- **Thống kê doanh thu & Báo cáo**: Phân tích doanh thu, đơn hàng, mặt hàng bán chạy nhất, xuất hóa đơn/báo cáo định dạng Microsoft Excel (`.xlsx`).
+- **Quản trị nhân sự & Khách hàng**: Quản lý hồ sơ nhân viên, phân quyền tài khoản, quản lý dữ liệu khách hàng.
+- **Xác thực bảo mật**: Đăng nhập phân quyền, xác thực hình ảnh CAPTCHA, gửi OTP khôi phục mật khẩu qua Email (SMTP).
+
+---
+
+## 🏛 Kiến trúc hệ thống & Nguyên lý OOP
+
+Hệ thống được thiết kế theo mô hình **3-Tier Layered Architecture** chuẩn mực công nghiệp, đảm bảo tách bạch rõ ràng giữa giao diện, nghiệp vụ và dữ liệu:
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                   Presentation Layer (GUI)                  │
-│       FlatLaf Look & Feel, UITheme Tokens, AppNavigator     │
-└──────────────────────────────┬──────────────────────────────┘
-                               │ Calls
-┌──────────────────────────────▼──────────────────────────────┐
-│                    Business Service Layer                   │
-│  IAuthService, IProductService, IOrderService, IReportService│
-└──────────────────────────────┬──────────────────────────────┘
-                               │ Calls
-┌──────────────────────────────▼──────────────────────────────┐
-│                   Data Access Layer (DAO)                   │
-│   DatabaseConnection (Singleton), ISanPhamDAO, IOrderDAO... │
-└──────────────────────────────┬──────────────────────────────┘
-                               │ JDBC
-┌──────────────────────────────▼──────────────────────────────┐
-│                      MySQL Database                         │
-└─────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────┐
+│                      Presentation Layer (Package GUI)                   │
+│   • GUI.auth: LoginFrame, RegisterDialog, ForgotPasswordDialog          │
+│   • GUI.main: MainDashboardFrame (RBAC Dynamic Sidebar + CardLayout)    │
+│   • GUI.panels: POS, Products, Orders, Imports, Staff, Shop, Cart...    │
+│   • GUI.common: ThemeConfig, CurrencyUtil, ImageUtil, ValidationUtil    │
+└────────────────────────────────────┬────────────────────────────────────┘
+                                     │ Calls Interface Methods
+┌────────────────────────────────────▼────────────────────────────────────┐
+│                    Business Logic Layer (Package Service)               │
+│   • IAuthService, IProductService, IOrderService, IUserService...      │
+│   • UserSession (Singleton): Quản lý phiên làm việc & thông tin user    │
+│   • Xử lý logic, tính toán tiền nong, validate nghiệp vụ               │
+└────────────────────────────────────┬────────────────────────────────────┘
+                                     │ Calls DAO Interface
+┌────────────────────────────────────▼────────────────────────────────────┐
+│                   Data Access Object Layer (Package DAO)                │
+│   • DatabaseConnection (Singleton thread-safe kết nối JDBC)             │
+│   • ISanPhamDAO, IHoaDonBanDAO, IHoaDonNhapDAO, ITaiKhoanDAO...         │
+│   • Thực thi SQL, ánh xạ ResultSet -> Model Entities                    │
+└────────────────────────────────────┬────────────────────────────────────┘
+                                     │ JDBC Driver
+┌────────────────────────────────────▼────────────────────────────────────┐
+│                       MySQL Relational Database                         │
+│                    `ClothingStore` Database Schema                      │
+└─────────────────────────────────────────────────────────────────────────┘
 ```
 
-### 1. Nguyên lý OOP & Thiết kế cốt lõi
-- **Encapsulation (Đóng gói)**: Toàn bộ thực thể trong package `Model` (`SanPham`, `TaiKhoan`, `KhachHang`, `NhanVien`, `TheLoai`,...) che giấu trường dữ liệu và chỉ cung cấp qua getter/setter, tự quản lý tính toàn vẹn nghiệp vụ.
-- **Abstraction & Interface Segregation (Trừu tượng hóa & Phân tách giao diện)**: Tách rời hoàn toàn đặc tả giao diện (`Service`, `DAO`) khỏi cài đặt cụ thể (`ServiceImpl`, `DAOImpl`). Tầng GUI chỉ phụ thuộc vào Interface, không phụ thuộc vào lớp triển khai trực tiếp.
-- **Polymorphism (Đa hình)**: Xử lý linh hoạt các loại tài khoản qua `enum LoaiTaiKhoan`, cơ chế lật trang linh hoạt `Refreshable` trên tất cả các view con.
-- **Single Responsibility (Trách nhiệm đơn nhất)**: Tách triệt để mã SQL ra khỏi giao diện Swing; GUI chỉ xử lý hiển thị và bắt sự kiện người dùng, nghiệp vụ do Service đảm nhiệm, truy vấn CSDL do DAO phụ trách.
+### 1. Áp dụng 4 tính chất OOP cốt lõi
+- **Encapsulation (Đóng gói)**: Toàn bộ thực thể trong `Model` (`SanPham`, `HoaDonBan`, `HoaDonNhap`, `TaiKhoan`, `NhanVien`, `KhachHang`,...) đóng gói dữ liệu với phạm vi `private/protected`, cung cấp quyền truy xuất qua getters/setters và các phương thức kiểm tra nghiệp vụ nội tại (`kiemTraConHang()`, `capNhatTonKho()`).
+- **Inheritance (Kế thừa)**:
+  - `NhanVien` và `KhachHang` kế thừa từ lớp trừu tượng `Nguoi` (tái sử dụng các trường định danh, họ tên, số điện thoại, email, địa chỉ).
+  - `HoaDonBan` và `HoaDonNhap` kế thừa từ lớp trừu tượng `HoaDon` (quản lý số hóa đơn, ngày lập, nhân viên, tổng tiền, danh sách chi tiết).
+- **Polymorphism (Đa hình)**:
+  - Phân quyền động qua enum `LoaiTaiKhoan` (`ADMIN`, `NHAN_VIEN`, `KHACH_HANG`).
+  - Giao diện `IGenericDAO<T, ID>` cho phép đa hình hóa các thao tác CRUD cơ bản trên các thực thể.
+  - Tầng Service phụ thuộc vào Interface (`ISanPhamDAO`, `IOrderService`,...), cho phép dễ dàng thay thế cài đặt mà không ảnh hưởng tới tầng trên.
+- **Abstraction (Trừu tượng hóa)**:
+  - Tách bạch 100% giữa Interface (`IAuthService`, `IProductService`, `IOrderService`,...) và lớp hiện thực (`AuthServiceImpl`, `ProductServiceImpl`,...).
+  - Tầng `GUI` chỉ tương tác với Interface của Service, hoàn toàn không chứa truy vấn SQL hay can thiệp trực tiếp vào CSDL.
 
-### 2. Các mẫu thiết kế (Design Patterns) áp dụng
+### 2. Các mẫu thiết kế (Design Patterns)
 - **Singleton Pattern**:
-  - `DatabaseConnection`: Quản lý tập trung một kết nối CSDL duy nhất, thread-safe, tối ưu hóa tài nguyên.
-  - `UserSession`: Lưu trữ phiên làm việc của người dùng hiện tại xuyên suốt vòng đời ứng dụng.
+  - `DatabaseConnection`: Khởi tạo và quản lý một kết nối JDBC duy nhất, thread-safe, tối ưu hóa tài nguyên kết nối CSDL.
+  - `UserSession`: Lưu trữ thông tin tài khoản và người dùng đang đăng nhập trong suốt phiên làm việc.
 - **Data Access Object (DAO) Pattern**: Tách biệt hoàn toàn tầng logic truy xuất dữ liệu với nghiệp vụ.
-- **Data Transfer Object (DTO) Pattern**: `CaptchaDTO` đóng gói dữ liệu truyền tải xác minh.
-- **View Cache & Navigation Controller Pattern**: `AppNavigator` và `panelCache` trong Dashboard điều phối chuyển trang mượt mà không cấp phát lại bộ nhớ thừa.
+- **Data Transfer Object (DTO) Pattern**: `CaptchaDTO` đóng gói dữ liệu truyền tải mã xác minh.
+- **Template / Delegation Pattern**: `AppNavigator` và `ThemeConfig` tập trung hóa cấu hình và điều hướng giao diện.
 
 ---
 
-## 🎨 Thiết kế giao diện chuẩn Doanh nghiệp 2026
+## 👥 Phân quyền người dùng (RBAC Matrix)
 
-Ứng dụng xóa bỏ hoàn toàn giao diện xám vuông vức của Java Swing truyền thống, chuyển đổi toàn diện sang ngôn ngữ thiết kế phẳng hiện đại:
+Hệ thống phân quyền truy cập chặt chẽ dựa trên trường `LoaiTaiKhoan` trong bảng `taikhoan`:
 
-- **FlatLaf 3.5.4 Engine**: Sử dụng Look and Feel hiện đại, bo tròn góc chuẩn mực (arc: 8px – 12px), loại bỏ viền nổi beveled 3D cổ điển.
-- **Bảng màu Slate & Royal Indigo**:
-  - Nền ứng dụng chính: `#F8FAFC` (Slate 50)
-  - Card & Container: `#FFFFFF` với đường viền mờ `#E2E8F0`
-  - Sidebar Dashboard: Nền tối sang trọng `#0F172A` (Slate 900)
-  - Màu chủ đạo (Primary): `#4F46E5` (Indigo 600), Hover: `#4338CA`
-  - Trạng thái phản hồi: Success `#16A34A`, Danger `#DC2626`, Warning `#D97706`.
-- **Hệ thống bảng dữ liệu (JTable Enterprise)**:
-  - Chiều cao dòng (Row Height) mở rộng lên **38px** kèm padding thoải mái.
-  - Tiêu đề cột (Header) cao **40px**, chữ đậm, nền `#F1F5F9`.
-  - Hiệu ứng sọc ngựa vằn (Zebra striping) xen kẽ giữa `#FFFFFF` và `#F8FAFC`.
-  - Vùng chọn (Selection) dịu mắt với tone màu tím phấn `#EEF2FF`.
-- **Cơ chế chuyển trang mượt mà (Smooth Page Switching)**:
-  - Ứng dụng mô hình **CardLayout & View Cache**: Các trang trên thanh Sidebar chỉ khởi tạo 1 lần (Lazy Loading) và lật thẻ tức thì (< 1ms).
-  - Không còn tình trạng giật màn hình hoặc hủy/tạo lại JPanel liên tục khi chuyển đổi chức năng.
-  - Tự động highlight trạng thái nút menu đang chọn (`Active State`).
-  - [AppNavigator](src/GUI/util/AppNavigator.java) hỗ trợ chuyển cửa sổ (Window Switching) giữ nguyên vị trí tọa độ, không làm chớp lộ màn hình Desktop.
-
----
-
-## ✨ Tính năng hệ thống
-
-### 🔐 1. Xác thực, Tài khoản & Bảo mật
-- **Đăng nhập / Đăng ký**: Hỗ trợ đăng nhập phân quyền tự động, đăng ký tài khoản khách hàng mới.
-- **Xác thực CAPTCHA**: Tạo mã hình ảnh ngẫu nhiên chống brute-force đăng nhập.
-- **Quản lý phiên (Session Management)**: Ghi nhận trạng thái `DangNhap` trong CSDL, hỗ trợ đăng xuất an toàn.
-- **Quên mật khẩu & OTP Email**: Tích hợp gửi mã OTP bảo mật 6 số qua email thật (Jakarta Mail / SMTP) để cấp lại mật khẩu.
-- **Đổi mật khẩu & Hồ sơ cá nhân**: Cập nhật mật khẩu và xem/sửa thông tin cá nhân trực tiếp trên giao diện Dashboard.
-
-### 👗 2. Quản lý Sản phẩm Thời trang
-- **Danh mục đa chiều**: Quản lý thuộc tính chi tiết: Thể loại, Kích cỡ, Chất liệu, Màu sắc, Đối tượng, Mùa, Nơi sản xuất.
-- **CRUD Sản phẩm**: Thêm, cập nhật, xóa sản phẩm kèm chọn tải ảnh minh họa trực tiếp (`JFileChooser`).
-- **Bộ lọc đa tiêu chí**: Lọc nhanh sản phẩm theo bất kỳ tiêu chí danh mục nào kết hợp.
-- **Cảnh báo tồn kho**: Theo dõi danh sách mặt hàng bán chạy và mặt hàng sắp hết hàng (tồn kho dưới ngưỡng cảnh báo).
-
-### 🛒 3. Bán hàng & Giỏ hàng Khách hàng
-- Xem danh sách sản phẩm trực quan, xem chi tiết và ảnh sản phẩm kích thước lớn.
-- Thêm sản phẩm vào giỏ hàng cá nhân, tùy chỉnh số lượng.
-- Xóa từng mặt hàng trong giỏ hoặc xác nhận đặt hàng nhanh toàn bộ giỏ hàng.
-- Tích hợp hướng dẫn chọn size chuẩn xác và hướng dẫn mua hàng ngay trong ứng dụng.
-
-### 📄 4. Quản lý Hóa đơn & Báo cáo
-- **Hóa đơn bán hàng**: Xem lịch sử mua hàng, tìm kiếm hóa đơn theo mã khách hàng.
-- **Hóa đơn nhập hàng**: Nhân viên và Quản lý lập hóa đơn nhập quần áo từ nhà cung cấp, tự động tính tổng tiền và chiết khấu.
-- **Lập hóa đơn tại quầy**: Hỗ trợ nhân viên lập hóa đơn thanh toán trực tiếp cho khách.
-- **Thống kê & Xuất Excel**: Thống kê doanh thu theo tháng, biểu diễn trực quan và xuất file báo cáo **Excel (.xlsx)** chuyên nghiệp thông qua Apache POI.
+| Chức năng / Phân hệ | Admin (Quản trị viên) | Nhân viên (NhanVien) | Khách hàng (KhachHang) |
+|---|:---:|:---:|:---:|
+| **Dashboard Thống kê tổng quan** | ✅ Đầy đủ | ❌ | ❌ |
+| **Quản lý Sản phẩm (Xem & Tìm kiếm)** | ✅ | ✅ | ❌ |
+| **Thêm / Sửa / Xóa Sản phẩm** | ✅ | ❌ (Chỉ xem) | ❌ |
+| **Xem Đơn giá nhập của sản phẩm** | ✅ | ❌ (Ẩn giá nhập) | ❌ |
+| **Xuất danh sách sản phẩm ra Excel** | ✅ (Kèm giá nhập) | ✅ (Không có giá nhập) | ❌ |
+| **Bán hàng tại quầy (Tạo hóa đơn bán)** | ✅ | ✅ | ❌ |
+| **Quản lý Đơn hàng & Xem chi tiết HĐ** | ✅ (Toàn bộ) | ✅ (Toàn bộ) | ❌ |
+| **In / Xuất hóa đơn bán ra Excel** | ✅ | ✅ | ❌ |
+| **Quản lý Nhập kho (HĐ Nhập & NCC)** | ✅ | ✅ | ❌ |
+| **Cảnh báo hàng sắp hết kho (`<= 10`)** | ✅ | ✅ | ❌ |
+| **Quản trị Nhân viên & Cấp tài khoản** | ✅ | ❌ | ❌ |
+| **Quản trị Khách hàng** | ✅ | ❌ | ❌ |
+| **Cửa hàng mua sắm dạng thẻ (Shop Grid)** | ❌ | ❌ | ✅ |
+| **Giỏ hàng & Đặt hàng trực tuyến** | ❌ | ❌ | ✅ |
+| **Xem lịch sử đơn mua cá nhân** | ❌ | ❌ | ✅ (Chỉ đơn của mình) |
+| **Quản lý Hồ sơ cá nhân & Đổi mật khẩu** | ✅ | ✅ | ✅ |
 
 ---
 
-## 👥 Phân quyền người dùng (RBAC)
+## ✨ Tính năng chi tiết theo phân hệ
 
-Hệ thống cung cấp 3 không gian làm việc chuyên biệt tùy theo vai trò đăng nhập:
+### 1. Phân hệ Xác thực & Tài khoản (`src/GUI/auth/`)
+- **Đăng nhập (`LoginFrame`)**:
+  - Giao diện 2 cột hiện đại: Cột trái là banner nhận diện thương hiệu thời trang; cột phải là form đăng nhập.
+  - Xác thực CAPTCHA bằng ảnh ngẫu nhiên lấy từ bảng `capcha` trong CSDL, có nút refresh `↻` đổi mã bảo vệ và cơ chế sinh mã tự động dự phòng.
+  - Checkbox bật/tắt ẩn hiện mật khẩu.
+  - Hỗ trợ phím `Enter` đăng nhập nhanh trên tất cả các trường.
+- **Đăng ký Khách hàng (`RegisterDialog`)**: Modal đăng ký thành viên mới dành cho khách hàng với kiểm tra định dạng tên đăng nhập, khớp mật khẩu, số điện thoại (10-11 số), email hợp lệ.
+- **Khôi phục mật khẩu (`ForgotPasswordDialog`)**: Quy trình khôi phục 2 bước: Nhập tên đăng nhập -> Nhận mã OTP 6 số gửi qua Email -> Nhập mã OTP và thiết lập mật khẩu mới.
 
-| Vai trò | Giao diện chính | Quyền hạn nghiệp vụ |
-|---|---|---|
-| **Admin (Quản trị viên)** | `Menu.java` | Toàn quyền quản trị hệ thống: Quản lý sản phẩm, danh mục, nhân viên, khách hàng, duyệt hóa đơn bán/nhập, thống kê doanh thu và xuất báo cáo Excel. |
-| **Nhân viên (NhanVien)** | `NhanvienForm.java` | Xem danh sách sản phẩm, lập hóa đơn bán hàng cho khách, lập hóa đơn nhập kho, kiểm tra hàng sắp hết, cập nhật thông tin cá nhân. |
-| **Khách hàng (KhachHang)** | `KhachhangForm.java` | Tra cứu sản phẩm thời trang, quản lý giỏ hàng, đặt hàng trực tuyến, xem tài khoản cá nhân, xem cẩm nang chọn size và hỗ trợ. |
+### 2. Phân hệ Khung sườn ứng dụng (`src/GUI/main/`)
+- **`MainDashboardFrame`**:
+  - **Sidebar bên trái (`#0F172A`)**: Chứa logo thương hiệu, Mini Card thông tin người dùng đang đăng nhập (`Username`, `Họ tên`, `Role Badge`), danh sách Menu điều hướng tương ứng với quyền của tài khoản, nút Đăng xuất an toàn ở chân trang.
+  - **Header trên cùng**: Tiêu đề phân hệ đang mở, đồng hồ thời gian thực (`dd/MM/yyyy HH:mm:ss`).
+  - **Content Area**: Điều phối các màn hình bằng `CardLayout`, hỗ trợ tự động tải lại dữ liệu khi người dùng chuyển đổi giữa các tab.
+
+### 3. Phân hệ Quản trị Sản phẩm (`src/GUI/panels/ProductManagementPanel.java`)
+- **Bảng dữ liệu**: Hiển thị ảnh thumbnail sản phẩm co giãn mượt mà, mã SP, tên, thể loại, kích cỡ, màu sắc, số lượng, giá bán, giá nhập (ẩn với Nhân viên) và trạng thái tồn kho (Hết hàng / Sắp hết / Còn hàng).
+- **Bộ lọc & Tìm kiếm**: Tìm kiếm từ khóa theo tên hoặc mã SP; lọc kết hợp theo Thể loại, Cỡ (Size), Màu sắc, Đối tượng.
+- **Thao tác**: Thêm mới, Chỉnh sửa, Xóa sản phẩm.
+- **Xuất Excel**: Xuất danh mục sản phẩm ra tệp `.xlsx` thông qua Apache POI.
+- **Modal Thêm/Sửa (`ProductFormDialog`)**: Bố cục 2 cột bằng `GridBagLayout`:
+  - Cột 1: Thông tin 10 thuộc tính liên kết với các bảng danh mục CSDL (`theloai`, `co`, `chatlieu`, `mau`, `mua`, `doituong`, `noisanxuat`).
+  - Cột 2: Khung xem trước ảnh lớn + nút `JFileChooser` chọn ảnh từ máy tính (tự động sao chép ảnh vào thư mục `images/` của dự án).
+
+### 4. Phân hệ Bán hàng & Hóa đơn (`src/GUI/panels/`)
+- **Bán hàng tại quầy POS (`InvoiceCreationDialog`)**:
+  - Cột 1: Danh sách sản phẩm còn hàng trong kho kèm ô tìm kiếm nhanh, chọn số lượng và thêm vào bảng tạm.
+  - Cột 2: Bảng chi tiết đơn hàng tạm tính, chọn khách hàng (hoặc Khách hàng vãng lai), nhập tỉ lệ chiết khấu (%), tự động tính tổng tiền thanh toán.
+  - Nút "Thanh toán & Lưu hóa đơn": Tự động trừ tồn kho sản phẩm trong CSDL, ghi nhận hóa đơn bán và chi tiết hóa đơn vào CSDL qua transaction an toàn, hỏi người dùng có muốn xuất/in hóa đơn ra file Excel ngay lập tức.
+- **Quản lý Đơn hàng (`OrderManagementPanel`)**:
+  - Danh sách hóa đơn bán hàng theo thời gian thực (Số HĐ, Ngày bán, Khách hàng, Nhân viên lập, Tổng tiền).
+  - Tìm kiếm nhanh theo Số hóa đơn hoặc Mã khách hàng.
+  - Modal xem chi tiết danh sách mặt hàng, số lượng, đơn giá, chiết khấu của từng hóa đơn.
+  - In/Xuất lại hóa đơn ra file Excel chuyên nghiệp.
+
+### 5. Phân hệ Nhập kho (`src/GUI/panels/`)
+- **Lập phiếu nhập (`ImportCreationDialog`)**: Chọn nhà cung cấp (`nhacungcap`), chọn sản phẩm, nhập số lượng, đơn giá nhập và chiết khấu.
+- **Quản lý Nhập hàng (`ImportManagementPanel`)**: Quản lý lịch sử nhập kho, xem chi tiết và in phiếu nhập hàng ra Excel.
+
+### 6. Phân hệ Mua sắm Khách hàng (`src/GUI/panels/`)
+- **Cửa hàng thời trang (`ShopGridPanel`)**: Hiển thị sản phẩm dạng lưới thẻ (Product Cards Grid) với ảnh lớn, tên, kích cỡ, màu sắc, đơn giá bán nổi bật và nút "Thêm vào giỏ".
+- **Giỏ hàng (`CartPanel`)**: Xem các mặt hàng đã chọn, tăng/giảm số lượng trực tiếp (+1 / -1), xóa mặt hàng, xem tổng tiền thanh toán và bấm "Đặt hàng ngay".
+
+### 7. Phân hệ Quản trị Người dùng & Hồ sơ (`src/GUI/panels/`)
+- **Quản lý Nhân viên (`StaffManagementPanel`)**: Quản lý hồ sơ nhân viên, chức vụ công việc (`congviec`), thêm mới nhân viên đồng thời cấp tài khoản đăng nhập hệ thống, cập nhật thông tin và xóa nhân viên.
+- **Quản lý Khách hàng (`CustomerManagementPanel`)**: Quản lý thông tin khách hàng, số điện thoại, email, địa chỉ; hỗ trợ chỉnh sửa và xóa khách hàng.
+- **Hồ sơ cá nhân & Đổi mật khẩu (`ProfilePanel`)**:
+  - Giao diện Card Panel căn giữa màn hình thoáng đãng, sang trọng.
+  - Tự động nhận diện dữ liệu tương ứng từ bảng `nhanvien` (đối với Admin/Nhân viên) hoặc `khachhang` (đối với Khách hàng).
+  - Chế độ "Chỉnh sửa" thông tin cá nhân kèm validate SĐT và Email.
+  - Form đổi mật khẩu bảo mật (kiểm tra mật khẩu cũ, khớp mật khẩu mới).
 
 ---
 
-## 📁 Cấu trúc mã nguồn
+## 🎨 Thiết kế giao diện Modern Flat UI
+
+Toàn bộ tầng giao diện được xây dựng mới 100% bằng Java Swing kết hợp thư viện FlatLaf Look and Feel:
+
+- **Khởi tạo FlatLaf chuẩn mực**:
+  ```java
+  FlatLightLaf.setup();
+  UIManager.put("Button.arc", 8);
+  UIManager.put("Component.arc", 8);
+  UIManager.put("TextComponent.arc", 8);
+  UIManager.put("ScrollBar.thumbArc", 8);
+  UIManager.put("Table.rowHeight", 38);
+  UIManager.put("TableHeader.height", 40);
+  ```
+- **Hệ thống Design Tokens (`ThemeConfig.java`)**:
+  - `PRIMARY`: `#2563EB` (Royal Blue)
+  - `PRIMARY_DARK`: `#1D4ED8`
+  - `PRIMARY_LIGHT`: `#EFF6FF`
+  - `SIDEBAR_BG`: `#0F172A` (Slate 900)
+  - `SIDEBAR_HOVER`: `#1E293B`
+  - `SIDEBAR_ACTIVE`: `#2563EB`
+  - `BG_MAIN`: `#F8FAFC`
+  - `SURFACE`: `#FFFFFF`
+  - `BORDER`: `#E2E8F0`
+  - `TEXT_MAIN`: `#0F172A`
+  - `TEXT_MUTED`: `#64748B`
+  - `DANGER`: `#EF4444` | `SUCCESS`: `#10B981` | `WARNING`: `#F59E0B`
+- **Quản lý Layout khoa học**:
+  - **Tuyệt đối không dùng `null layout` (`setBounds`)**, không dùng GUI Builder tự sinh mã rác.
+  - Sử dụng kết hợp `BorderLayout`, `GridBagLayout` (cho form nhập liệu 2 cột cân đối), `CardLayout` (cho chuyển tab), `FlowLayout` và `BoxLayout`.
+  - Mọi trường dữ liệu, tiêu đề bảng, nút bấm co giãn hoàn hảo trên màn hình từ 1280x720 trở lên, không bị cắt xén chữ (truncation).
+- **Quy chuẩn Format**:
+  - Tiền tệ: Chuẩn VNĐ dạng `400.000 ₫` thông qua `Locale.forLanguageTag("vi-VN")`.
+  - Ngày tháng: Chuẩn `dd/MM/yyyy HH:mm`.
+
+---
+
+## 📁 Cấu trúc mã nguồn chi tiết
 
 ```
 OOP-with-java/
-├── lib/                                    # Thư viện phụ thuộc (JARs)
-│   ├── flatlaf-3.5.4.jar                   # Look and Feel hiện đại 2026
-│   ├── mysql-connector-j-9.2.0.jar         # Driver kết nối MySQL
-│   ├── poi-5.2.3.jar / poi-ooxml-*.jar     # Đọc/ghi tài liệu Excel
-│   ├── jakarta.mail-2.0.1.jar              # Gửi email OTP
-│   └── ...                                 # Các thư viện bổ trợ khác
+├── lib/                                            # Thư viện phụ thuộc (JARs)
+│   ├── flatlaf-3.5.4.jar                           # Look and Feel phẳng hiện đại
+│   ├── mysql-connector-j-9.2.0.jar                 # Driver kết nối MySQL
+│   ├── poi-5.2.3.jar / poi-ooxml-*.jar             # Xử lý xuất báo cáo Excel (.xlsx)
+│   ├── jakarta.mail-2.0.1.jar                      # Dịch vụ gửi email OTP
+│   ├── jakarta.activation-2.0.1.jar
+│   ├── commons-io-2.11.0.jar / commons-codec-*.jar
+│   └── xmlbeans-5.1.1.jar / log4j-api-2.18.0.jar
+├── images/                                         # Kho hình ảnh sản phẩm & mẫu captcha
+│   ├── samples/                                    # Hơn 300 mẫu ảnh Captcha (22d5n.png,...)
+│   └── ...                                         # Ảnh sản phẩm tải lên
 ├── src/
-│   ├── Main.java                           # Điểm kích hoạt ứng dụng
-│   ├── Model/                              # Domain Entities & Value Objects
-│   │   ├── TaiKhoan.java / LoaiTaiKhoan.java
-│   │   ├── SanPham.java
-│   │   ├── KhachHang.java / NhanVien.java
-│   │   ├── HoaDonBan.java / HoaDonNhap.java / DonHang.java
-│   │   └── TheLoai.java / Co.java / Mau.java / Mua.java...
-│   ├── DAO/                                # Tầng truy cập dữ liệu (JDBC Data Access)
-│   │   ├── DatabaseConnection.java         # Singleton kết nối CSDL MySQL
-│   │   ├── ISanPhamDAO.java / SanPhamDAOImpl.java
-│   │   ├── IKhachHangDAO.java / KhachHangDAOImpl.java
-│   │   ├── INhanVienDAO.java / NhanVienDAOImpl.java
+│   ├── Main.java                                   # Điểm khởi chạy ứng dụng
+│   ├── Model/                                      # Domain Entities
+│   │   ├── Nguoi.java                              # Abstract base class cho con người
+│   │   ├── NhanVien.java / KhachHang.java          # Kế thừa Nguoi
+│   │   ├── HoaDon.java                             # Abstract base class cho hóa đơn
+│   │   ├── HoaDonBan.java / HoaDonNhap.java        # Kế thừa HoaDon
+│   │   ├── ChiTietHoaDon.java / ItemGioHang.java   # Chi tiết mục hàng
+│   │   ├── SanPham.java                            # Thực thể sản phẩm quần áo
+│   │   ├── TaiKhoan.java / LoaiTaiKhoan.java       # Tài khoản & Enum vai trò
+│   │   ├── NhaCungCap.java / CongViec.java         # Nhà cung ứng & Vị trí công việc
+│   │   └── TheLoai.java / Co.java / Mau.java       # Các thuộc tính danh mục
+│   │       / Mua.java / DoiTuong.java
+│   │       / ChatLieu.java / NoiSanXuat.java
+│   ├── DAO/                                        # Data Access Object Layer
+│   │   ├── DatabaseConnection.java                 # Singleton quản lý kết nối MySQL
+│   │   ├── IGenericDAO.java                        # Generic CRUD DAO Interface
+│   │   ├── ISanPhamDAO.java / SanPhamDAOImpl.java  # Truy vấn sản phẩm (JOIN, filter, search)
 │   │   ├── IHoaDonBanDAO.java / HoaDonBanDAOImpl.java
 │   │   ├── IHoaDonNhapDAO.java / HoaDonNhapDAOImpl.java
-│   │   ├── IDonHangDAO.java / DonHangDAOImpl.java
 │   │   ├── ITaiKhoanDAO.java / TaiKhoanDAOImpl.java
-│   │   └── IDanhMucDAO.java / DanhMucDAOImpl.java
-│   ├── Service/                            # Tầng xử lý nghiệp vụ (Business Logic)
-│   │   ├── UserSession.java                # Quản lý phiên đăng nhập
+│   │   ├── INhanVienDAO.java / NhanVienDAOImpl.java
+│   │   ├── IKhachHangDAO.java / KhachHangDAOImpl.java
+│   │   ├── IGioHangDAO.java / GioHangDAOImpl.java
+│   │   └── IDanhMucDAO.java / DanhMucDAOImpl.java  # Nạp dữ liệu các bảng thuộc tính
+│   ├── Service/                                    # Business Logic Layer
+│   │   ├── UserSession.java                        # Singleton quản lý phiên đăng nhập
 │   │   ├── IAuthService.java / AuthServiceImpl.java
 │   │   ├── IProductService.java / ProductServiceImpl.java
 │   │   ├── IOrderService.java / OrderServiceImpl.java
-│   │   ├── IUserService.java / UserServiceImpl.java
-│   │   ├── IReportService.java / ReportServiceImpl.java
 │   │   ├── IImportService.java / ImportServiceImpl.java
-│   │   ├── IOTPService.java / OTPServiceImpl.java
-│   │   └── dto/CaptchaDTO.java
-│   └── GUI/                                # Tầng giao diện người dùng (Presentation)
-│       ├── Start.java                      # Màn hình Đăng nhập & Captcha
-│       ├── register.java                   # Màn hình Đăng ký tài khoản
-│       ├── Quenmatkhau.java / OTP.java     # Luồng quên mật khẩu & xác nhận OTP
-│       ├── Doimatkhau.java / OTP1.java    # Đổi mật khẩu
-│       ├── Menu.java                       # Dashboard Quản trị viên (Admin)
-│       ├── NhanvienForm.java               # Dashboard Nhân viên
-│       ├── KhachhangForm.java              # Dashboard Khách hàng
-│       ├── Sanpham.java / SanphamKH.java   # Panels quản lý và xem sản phẩm
-│       ├── NVdanhSachsPham.java            # Tra cứu sản phẩm cho nhân viên
-│       ├── Khachhang.java / Nhanvien.java  # Quản lý khách hàng & nhân viên
-│       ├── Giohang.java                    # Quản lý giỏ hàng
-│       ├── Hoadonban.java / Hoadonnhap.java
-│       ├── Nhanvienlaphoadon.java / HoadonnhapNV.java
-│       ├── Thongke.java                    # Báo cáo doanh thu & xuất Excel
-│       ├── Thongtintk.java                 # Quản lý thông tin tài khoản
-│       ├── Huongdanchonsize.java / Huongdandathang.java / Lienhehotro.java
-│       ├── Refreshable.java                # Giao diện cho phép làm mới dữ liệu
+│   │   ├── IUserService.java / UserServiceImpl.java
+│   │   ├── IReportService.java / ReportServiceImpl.java # Xuất báo cáo Excel qua POI
+│   │   ├── IOTPService.java / OTPServiceImpl.java       # Sinh & gửi OTP qua Jakarta Mail
+│   │   ├── dto/
+│   │   │   └── CaptchaDTO.java                     # Đóng gói dữ liệu xác thực Captcha
+│   │   └── exception/                              # Custom Runtime Exceptions
+│   │       ├── BusinessException.java
+│   │       ├── AuthenticationException.java
+│   │       └── ValidationException.java
+│   └── GUI/                                        # Presentation Layer (Modern Flat UI)
+│       ├── Start.java                              # Điểm mở giao diện đăng nhập
+│       ├── common/                                 # Lớp tiện ích giao diện
+│       │   ├── ThemeConfig.java                    # Cấu hình FlatLaf, font, bảng màu
+│       │   ├── CurrencyUtil.java                   # Format tiền tệ VNĐ chuẩn
+│       │   ├── ImageUtil.java                      # Smooth scale, placeholder, copy ảnh
+│       │   ├── ValidationUtil.java                 # Kiểm tra định dạng Email, Phone, Số
+│       │   └── AppNavigator.java                   # Điều hướng chuyển cửa sổ an toàn
+│       ├── auth/                                   # Phân hệ Xác thực
+│       │   ├── LoginFrame.java                     # Cửa sổ đăng nhập (Banner + Form + Captcha)
+│       │   ├── RegisterDialog.java                 # Modal đăng ký khách hàng
+│       │   └── ForgotPasswordDialog.java           # Modal khôi phục mật khẩu qua OTP
+│       ├── main/                                   # Khung sườn ứng dụng chính
+│       │   └── MainDashboardFrame.java             # Dashboard đa vai trò, Sidebar động
+│       ├── panels/                                 # Các màn hình chức năng nghiệp vụ
+│       │   ├── DashboardOverviewPanel.java         # Thống kê doanh thu, bán chạy, tồn kho
+│       │   ├── ProductManagementPanel.java         # Bảng SP, tìm kiếm, lọc, xuất Excel
+│       │   ├── ProductFormDialog.java              # Modal thêm/sửa sản phẩm 2 cột
+│       │   ├── OrderManagementPanel.java           # Quản lý hóa đơn bán, xem chi tiết
+│       │   ├── InvoiceCreationDialog.java          # Màn hình bán hàng tại quầy POS
+│       │   ├── ImportManagementPanel.java          # Quản lý hóa đơn nhập hàng
+│       │   ├── ImportCreationDialog.java           # Lập phiếu nhập kho từ nhà cung cấp
+│       │   ├── StaffManagementPanel.java           # Quản lý nhân viên & tài khoản
+│       │   ├── CustomerManagementPanel.java        # Quản lý danh sách khách hàng
+│       │   ├── ShopGridPanel.java                  # Mua sắm dạng thẻ cho Khách hàng
+│       │   ├── CartPanel.java                      # Giỏ hàng & Đặt hàng của Khách hàng
+│       │   └── ProfilePanel.java                   # Hồ sơ cá nhân & Đổi mật khẩu
 │       ├── theme/
-│       │   └── UITheme.java                # Hệ thống Design Tokens & Component Styling
+│       │   └── UITheme.java                        # Compatibility facade trỏ vào ThemeConfig
 │       └── util/
-│           └── AppNavigator.java           # Điều hướng cửa sổ mượt mà
-├── .agent_context/
-│   └── repo_summary.xml                    # Bản đồ cấu trúc thư mục tự động
-└── README.md
+│           └── AppNavigator.java                   # Compatibility facade trỏ vào AppNavigator
+├── ClothingStore.sql                               # Kịch bản tạo CSDL & dữ liệu mẫu
+├── repomix.config.json                             # Cấu hình Repomix tự động đồng bộ
+└── README.md                                       # Tài liệu hướng dẫn dự án
 ```
 
 ---
 
-## 🛠 Công nghệ & Thư viện sử dụng
+## 🗄️ Cơ sở dữ liệu (Database Schema)
 
-| Công nghệ / Thư viện | Phiên bản | Mục đích sử dụng |
-|---|---|---|
-| **Java SE (JDK)** | 17+ | Ngôn ngữ phát triển chính |
-| **Java Swing** | Core | Xây dựng kiến trúc giao diện Desktop |
-| **FlatLaf** | 3.5.4 | Look & Feel phẳng, hiện đại chuẩn doanh nghiệp 2026 |
-| **MySQL Connector/J** | 9.2.0 | Trình điều khiển kết nối cơ sở dữ liệu MySQL |
-| **Apache POI** | 5.2.3 | Xử lý xuất báo cáo thống kê định dạng Excel (.xlsx) |
-| **Jakarta Mail** | 2.0.1 | Dịch vụ gửi email chứa mã OTP bảo mật |
-| **Apache Commons IO / Codec** | 2.11.0 / 1.15 | Tiện ích xử lý dữ liệu và mã hóa |
-| **Log4j** | 2.18.0 | Ghi nhật ký lỗi và vận hành ứng dụng |
+Dự án sử dụng cơ sở dữ liệu quan hệ **MySQL** (`ClothingStore`), bao gồm 18 bảng:
+
+| Tên bảng | Chức năng chi tiết |
+|---|---|
+| `taikhoan` | Tài khoản đăng nhập (`MaTaiKhoan`, `TenDangNhap`, `MatKhau`, `LoaiTaiKhoan`, `DangNhap`) |
+| `sanpham` | Thông tin quần áo (`MaQuanAo`, `TenQuanAo`, `MaLoai`, `MaCo`, `MaMau`, `MaMua`, `MaDoiTuong`, `MaChatLieu`, `MaNSX`, `SoLuong`, `Anh`, `DonGiaNhap`, `DonGiaBan`) |
+| `theloai` | Danh mục loại quần áo (Áo sơ mi, Áo thun, Quần jean, Váy...) |
+| `co` | Kích cỡ (S, M, L, XL, XXL...) |
+| `chatlieu` | Chất liệu vải (Cotton, Kaki, Jean, Lụa, Nỉ...) |
+| `mau` | Màu sắc (Trắng, Đen, Xanh, Đỏ, Vàng...) |
+| `mua` | Mùa thời trang (Xuân, Hạ, Thu, Đông, Bốn mùa) |
+| `doituong` | Đối tượng sử dụng (Nam, Nữ, Trẻ em, Unisex) |
+| `noisanxuat` | Xuất xứ / Nơi sản xuất (Việt Nam, Hàn Quốc, Nhật Bản...) |
+| `nhacungcap` | Nhà cung cấp nhập hàng (`MaNCC`, `TenNCC`, `DiaChi`, `SoDienThoai`) |
+| `congviec` | Vị trí chức vụ nhân viên (`MaCV`, `TenCV`) |
+| `nhanvien` | Hồ sơ nhân viên (`MaNhanVien`, `TenNhanVien`, `GioiTinh`, `NgaySinh`, `DiaChi`, `SoDienThoai`, `Email`, `MaCV`, `MaTaiKhoan`) |
+| `khachhang` | Hồ sơ khách hàng (`MaKhachHang`, `TenKhach`, `SoDienThoai`, `DiaChi`, `Email`, `MaTaiKhoan`) |
+| `giohang` | Lưu giỏ hàng của khách (`MaKhachHang`, `MaQuanAo`, `SoLuong`, `DonGiaBan`, `TrangThai`) |
+| `hoadonban` | Hóa đơn bán lẻ (`SoHoaDonBan`, `MaKhachHang`, `NgayBan`, `MaNhanVien`, `TongTien`) |
+| `chitiethoadonban`| Chi tiết từng mặt hàng bán (`SoHoaDonBan`, `MaQuanAo`, `SoLuong`, `GiamGia`, `ThanhTien`) |
+| `hoadonnhap` | Hóa đơn nhập hàng (`SoHoaDonNhap`, `MaNhanVien`, `NgayNhap`, `MaNCC`, `TongTien`) |
+| `chitiethoadonnhap`| Chi tiết từng mặt hàng nhập (`SoHoaDonNhap`, `MaQuanAo`, `SoLuong`, `DonGia`, `GiamGia`, `ThanhTien`) |
+| `capcha` | Danh mục ảnh và đáp án CAPTCHA (`MaAnh`, `LinkAnh`, `KetQua`) |
 
 ---
 
-## 💻 Yêu cầu hệ thống
+## 🛠 Công nghệ & Thư viện phụ thuộc
 
-- **Hệ điều hành**: Windows 10/11, macOS hoặc Linux (Ubuntu, Debian, Fedora,...).
-- **Java Development Kit (JDK)**: Phiên bản 17 trở lên.
+| Thư viện / Công nghệ | Phiên bản | Mục đích sử dụng |
+|---|:---:|---|
+| **Java SE (JDK)** | 17+ | Nền tảng ngôn ngữ chính |
+| **Java Swing thuần** | Core | Xây dựng giao diện người dùng desktop chuẩn |
+| **FlatLaf** | `3.5.4` | Look and Feel hiện đại, bo góc phẳng chuẩn 2026 |
+| **MySQL Connector/J** | `9.2.0` | Driver kết nối JDBC CSDL MySQL |
+| **Apache POI & POI-OOXML** | `5.2.3` | Tạo và xuất báo cáo, hóa đơn định dạng Microsoft Excel (`.xlsx`) |
+| **Jakarta Mail & Activation** | `2.0.1` | Dịch vụ gửi email mã OTP khôi phục mật khẩu qua giao thức SMTP |
+| **Apache Commons IO / Codec** | `2.11.0 / 1.15` | Tiện ích hỗ trợ xử lý dữ liệu nhị phân và tệp tin |
+| **SparseBitSet** | `1.2` | Thư viện tối ưu cấu trúc dữ liệu cho Apache POI |
+| **Log4j API** | `2.18.0` | Ghi nhận nhật ký hoạt động |
+
+---
+
+## 💻 Yêu cầu hệ thống & Hướng dẫn cài đặt
+
+### 1. Yêu cầu môi trường
+- **Hệ điều hành**: Windows 10/11, Linux (Ubuntu, Debian, Fedora,...) hoặc macOS.
+- **Java Development Kit (JDK)**: Phiên bản 17 hoặc mới hơn (khuyên dùng OpenJDK 17 hoặc 21).
 - **MySQL Database Server**: Phiên bản 8.0 trở lên.
-- **Môi trường phát triển**: IntelliJ IDEA, VS Code, NetBeans hoặc Eclipse.
+- **Môi trường phát triển**: VS Code, IntelliJ IDEA, Eclipse hoặc NetBeans.
 
----
-
-## 🚀 Hướng dẫn cài đặt & Khởi chạy
-
-### Bước 1: Sao chép kho mã nguồn
-```bash
-git clone https://github.com/iloveflo/OOP-with-java.git
-cd OOP-with-java
-```
-
-### Bước 2: Thiết lập Cơ sở dữ liệu MySQL
-1. Khởi động dịch vụ MySQL trên máy chủ / máy cục bộ.
-2. Tạo cơ sở dữ liệu mới:
-   ```sql
-   CREATE DATABASE ClothingStore CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+### 2. Thiết lập Cơ sở dữ liệu MySQL
+1. Khởi động dịch vụ MySQL Server.
+2. Mở MySQL client (hoặc MySQL Workbench / DBeaver / phpMyAdmin) và thực thi file kịch bản có sẵn trong thư mục gốc:
+   ```bash
+   mysql -u root -p < ClothingStore.sql
    ```
-3. Nhập dữ liệu ban đầu từ file kịch bản SQL (nếu có).
+   *(File `ClothingStore.sql` sẽ tự động tạo database `ClothingStore`, cấu trúc 18 bảng và nạp sẵn toàn bộ dữ liệu mẫu bao gồm tài khoản, sản phẩm, danh mục và ảnh captcha).*
 
-### Bước 3: Cấu hình kết nối Cơ sở dữ liệu
-Mở file `src/DAO/DatabaseConnection.java` và chỉnh sửa các thông số phù hợp:
-
+### 3. Cấu hình kết nối JDBC
+Kiểm tra và cập nhật tài khoản/mật khẩu MySQL của bạn trong file [`src/DAO/DatabaseConnection.java`](file:///home/iloveflo/Documents/OOP-with-java/src/DAO/DatabaseConnection.java):
 ```java
-private static final String URL = "jdbc:mysql://localhost:3306/ClothingStore?useUnicode=true&characterEncoding=UTF-8&serverTimezone=UTC";
+private static final String URL = "jdbc:mysql://localhost:3306/ClothingStore?useSSL=false&allowPublicKeyRetrieval=true";
 private static final String USER = "root";
 private static final String PASSWORD = "your_mysql_password";
 ```
 
-### Bước 4: Biên dịch và chạy ứng dụng
+---
 
-#### 🔹 Trên Linux / macOS:
+## 🚀 Hướng dẫn biên dịch & Vận hành
+
+### 🔹 Cách 1: Chạy bằng dòng lệnh (Terminal / Command Prompt)
+
+#### Trên Linux / macOS:
 ```bash
-# Tạo thư mục đầu ra
+# 1. Tạo thư mục chứa file binary đã biên dịch
 mkdir -p bin
 
-# Biên dịch toàn bộ mã nguồn
-javac -cp "lib/*" -d bin $(find src -name "*.java")
+# 2. Biên dịch toàn bộ mã nguồn
+javac -cp "lib/*:src" -d bin src/Model/*.java src/DAO/*.java src/Service/*.java src/Service/*/*.java src/GUI/*/*.java src/GUI/*.java src/Main.java
 
-# Chạy ứng dụng
+# 3. Khởi chạy ứng dụng
 java -cp "bin:lib/*" Main
 ```
 
-#### 🔹 Trên Windows (Command Prompt / PowerShell):
-```powershell
-# Tạo thư mục đầu ra
+#### Trên Windows (Command Prompt hoặc PowerShell):
+```cmd
+:: 1. Tạo thư mục bin
 if not exist bin mkdir bin
 
-# Biên dịch toàn bộ mã nguồn
-javac -cp "lib/*" -d bin src/Main.java src/Model/*.java src/DAO/*.java src/DAO/impl/*.java src/Service/*.java src/Service/impl/*.java src/Service/dto/*.java src/GUI/*.java src/GUI/theme/*.java src/GUI/util/*.java
+:: 2. Biên dịch toàn bộ mã nguồn (dùng dấu chấm phẩy ; cho classpath)
+javac -cp "lib/*;src" -d bin src/Model/*.java src/DAO/*.java src/Service/*.java src/Service/*/*.java src/GUI/*/*.java src/GUI/*.java src/Main.java
 
-# Chạy ứng dụng (lưu ý dùng dấu chấm phẩy ; cho classpath)
+:: 3. Khởi chạy ứng dụng
 java -cp "bin;lib/*" Main
 ```
 
 ---
 
-## 🗄️ Cơ sở dữ liệu
-
-Hệ thống quản lý dữ liệu chặt chẽ qua các bảng quan hệ:
-
-| Bảng CSDL | Diễn giải chức năng |
-|---|---|
-| `taikhoan` | Lưu thông tin đăng nhập, loại quyền (`Admin`, `NhanVien`, `KhachHang`), trạng thái đăng nhập |
-| `sanpham` | Thông tin chi tiết mã quần áo, tên, giá nhập, giá bán, số lượng, liên kết danh mục |
-| `theloai`, `co`, `chatlieu`, `mau`, `doituong`, `mua`, `noisanxuat` | Bảng danh mục thuộc tính sản phẩm |
-| `khachhang` | Hồ sơ khách hàng (họ tên, điện thoại, email, địa chỉ, liên kết tài khoản) |
-| `nhanvien` | Hồ sơ nhân viên (họ tên, ngày sinh, giới tính, liên kết công việc, tài khoản) |
-| `giohang` | Lưu vết giỏ hàng tạm thời của khách hàng |
-| `hoadonban` & `chitiethoadonban` | Hóa đơn xuất kho / bán lẻ và chi tiết từng mặt hàng |
-| `hoadonnhap` & `chitiethoadonnhap` | Hóa đơn nhập hàng từ nhà cung cấp |
-| `CapCha` | Quản lý kho mã captcha và đường dẫn ảnh xác thực |
+### 🔹 Cách 2: Chạy trên Visual Studio Code
+1. Mở thư mục dự án `OOP-with-java` bằng VS Code.
+2. Cài đặt extension: **Extension Pack for Java** (của Microsoft / Red Hat).
+3. VS Code sẽ tự động nhận diện cấu hình trong `.vscode/settings.json`, `.project` và `.classpath`:
+   - Source folder: `src/`
+   - Output folder: `bin/`
+   - Libraries: `lib/**/*.jar`
+4. Mở file [`src/Main.java`](file:///home/iloveflo/Documents/OOP-with-java/src/Main.java), nhấn nút **Run** (hoặc phím `F5`) để khởi chạy trực tiếp.
 
 ---
 
-## 👨‍💻 Bản quyền & Đóng góp
+### 🔑 Tài khoản mẫu thử nghiệm hệ thống
 
-- **Nhóm phát triển**: BDTHD Software Team
-- **Giấy phép**: Dự án mã nguồn mở phục vụ học tập, nghiên cứu kiến trúc phần mềm và thực hành OOP / Java Swing nâng cao.
+Dựa trên dữ liệu khởi tạo trong `ClothingStore.sql`:
+
+| Tên đăng nhập | Mật khẩu | Vai trò | Không gian làm việc hiển thị |
+|---|---|---|---|
+| `admin` | `admin123` | **Admin** | Toàn quyền: Thống kê doanh thu, Sản phẩm, Bán hàng, Nhập kho, Nhân viên, Khách hàng |
+| `nhanvien1` | `123456` | **Nhân viên** | Bán hàng tại quầy POS, Quản lý đơn hàng, Nhập kho, Cảnh báo tồn kho |
+| `khachhang1`| `123456` | **Khách hàng** | Cửa hàng thẻ sản phẩm, Giỏ hàng, Đặt hàng trực tuyến, Lịch sử mua hàng |
+
+---
 
 <p align="center">
-  <b>⭐ Nếu dự án hữu ích với bạn, hãy ủng hộ bằng cách bấm Star trên repository! ⭐</b>
+  <b>Tôn vinh phong cách - Khẳng định cá tính</b><br>
+  <i>Hệ thống Quản lý Cửa hàng Quần áo © 2026</i>
 </p>

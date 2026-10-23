@@ -11,6 +11,8 @@ public interface IProductService {
     boolean updateProduct(SanPham sp);
     boolean deleteProduct(int id);
     List<SanPham> filterProducts(Integer maLoai, Integer maCo, Integer maChatLieu, Integer maDoiTuong, Integer maMau, Integer maMua, Integer maNSX);
+    List<SanPham> searchAndFilter(String keyword, Integer maLoai, Integer maCo, Integer maChatLieu, Integer maDoiTuong, Integer maMau, Integer maMua, Integer maNSX);
+    DAO.IDanhMucDAO getDanhMucDAO();
     List<SanPham> getTopSelling(int limit);
     List<SanPham> getLowStockAlert(int threshold);
 }

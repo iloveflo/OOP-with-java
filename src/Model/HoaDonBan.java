@@ -23,6 +23,14 @@ public class HoaDonBan extends HoaDon {
         this.khachHang = khachHang;
     }
 
+    public Date getNgayBan() {
+        return getNgayLap();
+    }
+
+    public void setNgayBan(Date ngayBan) {
+        setNgayLap(ngayBan);
+    }
+
     @Override
     public String getLoaiHoaDon() {
         return "Hóa Đơn Bán";
